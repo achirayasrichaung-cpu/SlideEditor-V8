@@ -1,0 +1,1381 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#0c0f18">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Slide Editor">
+  <title>Slide Editor Pro — @YUIACHI</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:ital,wght@0,300;0,400;0,600;0,700;1,300&family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400;1,600&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --bg: #0c0f18;
+      --surface: #141929;
+      --surface2: #1c2540;
+      --border: #252e4a;
+      --accent: #c9a96e;
+      --accent-dim: rgba(201,169,110,0.12);
+      --text: #e8e4dc;
+      --muted: #8892a4;
+      --danger: #e05c6a;
+      --success: #5cbf8a;
+      --info: #5b9cf6;
+    }
+
+    html, body { width:100%; height:100%; overflow:hidden; }
+
+    body {
+      font-family: 'Sarabun', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      display: flex;
+      flex-direction: column;
+      padding-top: max(10px, env(safe-area-inset-top));
+      padding-left: env(safe-area-inset-left);
+      padding-right: env(safe-area-inset-right);
+      padding-bottom: max(10px, env(safe-area-inset-bottom));
+    }
+
+    .container { flex:1; display:flex; flex-direction:column; overflow:hidden; padding: 0 10px; }
+
+    /* ── Header ── */
+    .header {
+      display:flex; align-items:center; justify-content:space-between;
+      padding: 8px 10px; margin-bottom:8px;
+      background:var(--surface); border:1px solid var(--border); border-radius:8px;
+      flex-shrink:0;
+    }
+    .header-left { display:flex; align-items:center; gap:8px; }
+    .brand-mark {
+      width:26px; height:26px; background:var(--accent);
+      border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:12px;
+    }
+    .brand-info h1 { font-family:'Cormorant Garamond',serif; font-size:13px; font-weight:600; color:var(--accent); }
+    .brand-info p { font-size:8px; color:var(--muted); letter-spacing:0.1em; }
+    .header-right { display:flex; gap:3px; }
+
+    .icon-btn {
+      width:26px; height:26px; border:1px solid var(--border);
+      background:var(--surface2); color:var(--muted); border-radius:5px;
+      cursor:pointer; font-size:11px; transition:all 0.2s;
+      display:flex; align-items:center; justify-content:center;
+      user-select:none; -webkit-user-select:none;
+    }
+    .icon-btn:active { border-color:var(--accent); color:var(--accent); }
+    .icon-btn:disabled { opacity:0.3; cursor:default; }
+
+    /* ── Tabs ── */
+    .tabs {
+      display:flex; gap:2px; margin-bottom:8px;
+      background:var(--surface); border:1px solid var(--border);
+      padding:3px; border-radius:8px; overflow-x:auto; flex-shrink:0;
+      scrollbar-width:none;
+    }
+    .tabs::-webkit-scrollbar { display:none; }
+    .tab-btn {
+      flex:0 0 auto; padding:6px 9px; border:none; background:transparent;
+      color:var(--muted); font-size:10px; font-weight:600; cursor:pointer;
+      border-radius:5px; transition:all 0.2s; font-family:'Sarabun',sans-serif;
+      letter-spacing:0.02em; white-space:nowrap; user-select:none;
+    }
+    .tab-btn.active { background:var(--accent); color:#0c0f18; }
+
+    .tab-content { display:none; overflow-y:auto; flex:1; }
+    .tab-content.active { display:flex; flex-direction:column; }
+
+    /* ── Aspect Ratio Bar ── */
+    .ratio-bar {
+      display:flex; gap:3px; margin-bottom:8px; flex-shrink:0;
+    }
+    .ratio-btn {
+      flex:1; padding:5px 4px; border:1px solid var(--border);
+      background:var(--surface2); color:var(--muted); border-radius:5px;
+      cursor:pointer; font-size:9px; font-weight:700;
+      font-family:'Sarabun',sans-serif; transition:all 0.2s;
+      text-align:center; user-select:none;
+    }
+    .ratio-btn.active { border-color:var(--accent); color:var(--accent); background:var(--accent-dim); }
+
+    /* ── Slide Preview ── */
+    .slide-preview-wrap {
+      display:flex; flex-direction:column; align-items:center;
+      background:var(--surface); border:1px solid var(--border);
+      border-radius:8px; padding:10px; flex:1; overflow-y:auto;
+    }
+
+    .slide {
+      border-radius:10px; padding:18px 16px 12px;
+      display:flex; flex-direction:column; position:relative;
+      overflow:hidden; box-shadow:0 10px 30px rgba(0,0,0,0.45);
+      flex-shrink:0; transition:all 0.3s;
+    }
+
+    /* ratio sizes */
+    .slide[data-ratio="9:16"] { width:160px; aspect-ratio:9/16; }
+    .slide[data-ratio="4:5"]  { width:200px; aspect-ratio:4/5; max-width:100%; }
+    .slide[data-ratio="1:1"]  { width:220px; aspect-ratio:1/1; max-width:100%; }
+    .slide[data-ratio="3:4"]  { width:180px; aspect-ratio:3/4; }
+
+    .slide-top { flex:0 0 auto; }
+    .slide-mid { flex:1; display:flex; flex-direction:column; justify-content:center; }
+    .slide-bot { flex:0 0 auto; }
+
+    .slide-eyebrow {
+      font-size:7px; font-weight:700; letter-spacing:0.15em;
+      text-transform:uppercase; opacity:0.55; margin-bottom:5px;
+    }
+    .slide-title {
+      font-family:'Cormorant Garamond',serif; font-size:20px;
+      font-weight:600; line-height:1.2; margin-bottom:4px;
+    }
+    .slide-subtitle {
+      font-size:9px; line-height:1.5; opacity:0.7; margin-bottom:8px; font-style:italic;
+    }
+    .slide-divider {
+      width:20px; height:1.5px; margin-bottom:8px; border-radius:2px; opacity:0.35;
+    }
+    .slide-body { font-size:9.5px; line-height:1.75; }
+    .slide-bullet { display:flex; align-items:flex-start; gap:5px; margin-bottom:5px; }
+    .bullet-mark {
+      width:2.5px; height:2.5px; border-radius:50%; margin-top:5px; flex-shrink:0;
+    }
+    .slide-footer {
+      display:flex; align-items:center; justify-content:space-between;
+      margin-top:8px; padding-top:6px; border-top:1px solid; border-color:inherit;
+      font-size:7px; opacity:0.35;
+    }
+
+    /* ── Dots ── */
+    .dots {
+      display:flex; justify-content:center; flex-wrap:wrap;
+      gap:3px; margin-top:8px;
+    }
+    .dot {
+      width:4px; height:4px; border-radius:50%;
+      background:var(--border); cursor:pointer; transition:all 0.25s;
+    }
+    .dot.active { background:var(--accent); width:14px; border-radius:2px; }
+
+    /* ── Buttons ── */
+    .btn-row { display:flex; gap:4px; margin-bottom:8px; flex-shrink:0; }
+    .btn {
+      flex:1; padding:8px; border:none; background:var(--accent); color:#0c0f18;
+      border-radius:6px; font-size:11px; font-weight:700; cursor:pointer;
+      font-family:'Sarabun',sans-serif; transition:all 0.2s; user-select:none;
+    }
+    .btn:active { opacity:0.8; transform:scale(0.98); }
+    .btn:disabled { opacity:0.35; cursor:default; }
+    .btn-ghost { background:var(--surface2); color:var(--text); border:1px solid var(--border); font-weight:600; }
+    .btn-full { width:100%; display:block; }
+    .btn-danger { background:var(--danger); color:#fff; }
+    .btn-info { background:var(--info); color:#0c0f18; }
+
+    /* ── Section label ── */
+    .section-label {
+      font-size:8px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase;
+      color:var(--muted); margin-bottom:6px; display:flex; align-items:center; gap:5px; flex-shrink:0;
+    }
+    .section-label::after { content:''; flex:1; height:1px; background:var(--border); }
+
+    /* ── Input ── */
+    .input-group { margin-bottom:8px; }
+    .input-label { font-size:9px; font-weight:600; margin-bottom:3px; display:block; color:var(--muted); }
+    .input-field {
+      width:100%; padding:7px 9px;
+      background:var(--surface); border:1px solid var(--border);
+      border-radius:6px; color:var(--text); font-size:11px;
+      font-family:'Sarabun',sans-serif; transition:border-color 0.2s; margin-bottom:3px;
+    }
+    .input-field:last-child { margin-bottom:0; }
+    .input-field:focus { outline:none; border-color:var(--accent); background:var(--surface2); }
+    textarea.input-field { resize:vertical; min-height:52px; }
+
+    /* ── AI Box ── */
+    .ai-box {
+      background:var(--accent-dim); border:1px solid rgba(201,169,110,0.25);
+      border-radius:8px; padding:10px; margin-bottom:10px; flex-shrink:0;
+    }
+    .ai-box .input-label { color:var(--accent); font-size:10px; }
+
+    /* ── Caption box ── */
+    .caption-output {
+      background:var(--surface2); border:1px solid var(--border);
+      border-radius:6px; padding:10px; font-size:11px; line-height:1.75;
+      white-space:pre-wrap; min-height:80px; position:relative;
+    }
+    .caption-output.empty { color:var(--muted); font-style:italic; }
+    .copy-btn {
+      position:absolute; top:6px; right:6px;
+      background:var(--surface); border:1px solid var(--border);
+      color:var(--muted); font-size:9px; padding:3px 7px; border-radius:4px;
+      cursor:pointer; transition:all 0.2s;
+    }
+    .copy-btn:active { color:var(--accent); border-color:var(--accent); }
+
+    /* ── Themes ── */
+    .theme-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:4px; margin-bottom:10px; }
+    .theme-btn {
+      padding:10px 8px; border:2px solid transparent; border-radius:6px;
+      cursor:pointer; font-family:'Cormorant Garamond',serif; font-size:13px;
+      letter-spacing:0.04em; transition:all 0.2s; user-select:none;
+    }
+    .theme-btn .theme-name { font-size:8px; font-family:'Sarabun',sans-serif; font-weight:700; margin-top:2px; opacity:0.5; }
+    .theme-btn.active { border-color:var(--accent); box-shadow:0 0 0 2px var(--accent-dim); }
+
+    /* ── Slider ── */
+    .slider-row { display:flex; align-items:center; gap:6px; margin-bottom:8px; }
+    .slider {
+      flex:1; height:2px; border-radius:2px; background:var(--border);
+      outline:none; -webkit-appearance:none;
+    }
+    .slider::-webkit-slider-thumb {
+      -webkit-appearance:none; width:12px; height:12px; border-radius:50%;
+      background:var(--accent); cursor:pointer; border:2px solid var(--bg);
+    }
+    .slider-val { font-size:9px; color:var(--accent); font-weight:700; min-width:28px; text-align:right; }
+
+    /* ── Loading ── */
+    .loading { display:none; text-align:center; padding:10px; }
+    .loading.show { display:block; }
+    .spinner {
+      display:inline-block; width:16px; height:16px;
+      border:2px solid var(--border); border-top-color:var(--accent);
+      border-radius:50%; animation:spin 0.7s linear infinite; margin-bottom:5px;
+    }
+    @keyframes spin { to { transform:rotate(360deg); } }
+    .loading-text { font-size:10px; color:var(--muted); }
+
+    /* ── Toast ── */
+    .toast {
+      position:fixed; bottom:max(16px,env(safe-area-inset-bottom)); left:50%;
+      transform:translateX(-50%); background:var(--surface2);
+      border:1px solid var(--border); color:var(--text);
+      padding:8px 14px; border-radius:16px; font-size:10px;
+      z-index:9999; white-space:nowrap; animation:toastIn 0.2s ease;
+    }
+    .toast.success { border-color:var(--success); color:var(--success); }
+    .toast.error { border-color:var(--danger); color:var(--danger); }
+    .toast.info { border-color:var(--info); color:var(--info); }
+    @keyframes toastIn {
+      from { opacity:0; transform:translateX(-50%) translateY(8px); }
+      to { opacity:1; transform:translateX(-50%) translateY(0); }
+    }
+
+    /* ── Slide List (draggable) ── */
+    .slide-list {
+      display:flex; flex-direction:column; gap:4px;
+      margin-bottom:8px; max-height:260px; overflow-y:auto;
+    }
+    .slide-list-item {
+      display:flex; align-items:center; gap:6px; padding:7px 8px;
+      background:var(--surface); border:1px solid var(--border);
+      border-radius:6px; cursor:pointer; transition:all 0.2s; font-size:10px;
+      user-select:none;
+    }
+    .slide-list-item.active { border-color:var(--accent); background:var(--accent-dim); }
+    .slide-list-item.dragging { opacity:0.4; }
+    .slide-list-item.drag-over { border-color:var(--info); background:rgba(91,156,246,0.08); }
+    .drag-handle { color:var(--muted); font-size:10px; cursor:grab; padding:0 2px; }
+    .drag-handle:active { cursor:grabbing; }
+    .slide-list-num { font-size:8px; color:var(--muted); min-width:14px; text-align:center; }
+    .slide-list-title { flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+
+    /* ── Modal ── */
+    .modal {
+      display:none; position:fixed; top:0; left:0; right:0; bottom:0;
+      background:rgba(0,0,0,0.65); z-index:10000;
+      align-items:center; justify-content:center; padding:12px;
+    }
+    .modal.show { display:flex; }
+    .modal-content {
+      background:var(--surface); border:1px solid var(--border);
+      border-radius:10px; padding:14px; max-width:100%; width:100%;
+      max-height:75vh; overflow-y:auto;
+    }
+    .modal-title { font-size:13px; font-weight:700; margin-bottom:10px; color:var(--accent); }
+    .modal-input {
+      width:100%; padding:8px 9px; background:var(--surface2);
+      border:1px solid var(--border); border-radius:6px;
+      color:var(--text); font-size:11px; font-family:'Sarabun',sans-serif; margin-bottom:10px;
+    }
+    .modal-input:focus { outline:none; border-color:var(--accent); }
+    .modal-buttons { display:flex; gap:6px; }
+    .modal-buttons .btn { flex:1; }
+
+    /* ── Progress bar for ZIP ── */
+    .progress-bar {
+      width:100%; height:3px; background:var(--border);
+      border-radius:2px; margin-top:6px; overflow:hidden; display:none;
+    }
+    .progress-bar.show { display:block; }
+    .progress-fill {
+      height:100%; background:var(--accent); border-radius:2px;
+      transition:width 0.3s;
+    }
+
+    /* ── Install prompt ── */
+    .install-prompt {
+      position:fixed; bottom:max(16px,env(safe-area-inset-bottom)); left:50%;
+      transform:translateX(-50%); background:var(--accent); color:#0c0f18;
+      padding:10px 14px; border-radius:8px; font-size:11px; font-weight:700;
+      z-index:9998; display:flex; gap:8px; align-items:center;
+      animation:toastIn 0.3s ease;
+    }
+    .install-prompt button {
+      background:#0c0f18; color:var(--accent); border:none;
+      padding:5px 10px; border-radius:4px; font-weight:700; cursor:pointer; font-size:9px;
+    }
+
+    /* scrollbar */
+    ::-webkit-scrollbar { width:3px; height:3px; }
+    ::-webkit-scrollbar-track { background:transparent; }
+    ::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
+  </style>
+</head>
+<body>
+<div class="container">
+
+  <!-- Header -->
+  <div class="header">
+    <div class="header-left">
+      <div class="brand-mark">✦</div>
+      <div class="brand-info">
+        <h1>Slide Editor</h1>
+        <p>PRO · @YUIACHI</p>
+      </div>
+    </div>
+    <div class="header-right">
+      <button class="icon-btn" onclick="undo()" id="undoBtn" disabled title="Undo (Ctrl+Z)">↶</button>
+      <button class="icon-btn" onclick="redo()" id="redoBtn" disabled title="Redo (Ctrl+Y)">↷</button>
+      <button class="icon-btn" onclick="openSaveModal()" title="Save (Ctrl+S)">💾</button>
+      <button class="icon-btn" onclick="openLoadModal()" title="Load">📂</button>
+    </div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <button class="tab-btn active"  onclick="switchTab('preview',this)">ตัวอย่าง</button>
+    <button class="tab-btn"         onclick="switchTab('editor',this)">แก้ไข</button>
+    <button class="tab-btn"         onclick="switchTab('manage',this)">สไลด์</button>
+    <button class="tab-btn"         onclick="switchTab('caption',this)">Caption</button>
+    <button class="tab-btn"         onclick="switchTab('theme',this)">Theme</button>
+    <button class="tab-btn"         onclick="switchTab('settings',this)">ตั้งค่า</button>
+  </div>
+
+  <!-- TAB: Preview -->
+  <div id="preview" class="tab-content active">
+    <!-- Ratio bar -->
+    <div class="ratio-bar" id="ratioBar">
+      <button class="ratio-btn" onclick="setRatio('9:16',this)">9:16</button>
+      <button class="ratio-btn active" onclick="setRatio('4:5',this)">4:5</button>
+      <button class="ratio-btn" onclick="setRatio('1:1',this)">1:1</button>
+      <button class="ratio-btn" onclick="setRatio('3:4',this)">3:4</button>
+    </div>
+
+    <div class="slide-preview-wrap">
+      <div id="slideCanvas" class="slide" data-ratio="4:5"></div>
+      <div class="dots" id="dots"></div>
+    </div>
+
+    <div class="btn-row" style="margin-top:8px;">
+      <button class="btn btn-ghost" onclick="previousSlide()">← ก่อน</button>
+      <button class="btn btn-ghost" onclick="nextSlide()">ถัดไป →</button>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-ghost" onclick="exportSlide()">📥 PNG</button>
+      <button class="btn btn-ghost" onclick="exportAllSlides()">📦 ZIP ทั้งหมด</button>
+    </div>
+    <div class="progress-bar" id="zipProgress"><div class="progress-fill" id="zipFill" style="width:0%"></div></div>
+  </div>
+
+  <!-- TAB: Editor -->
+  <div id="editor" class="tab-content">
+    <!-- AI Generate -->
+    <div class="ai-box">
+      <div class="input-label">✦ AI สร้างสไลด์</div>
+      <!-- Mode toggle -->
+      <div style="display:flex;gap:3px;margin-bottom:8px;">
+        <button class="ratio-btn active" id="modeGen" onclick="setMode('gen',this)" style="flex:1;">🪄 สร้างจากหัวข้อ</button>
+        <button class="ratio-btn" id="modePaste" onclick="setMode('paste',this)" style="flex:1;">📋 วางเนื้อหาเอง</button>
+      </div>
+      <!-- Generate mode -->
+      <div id="modeGenBox">
+        <textarea id="topicInput" class="input-field" rows="2" placeholder="หัวข้อ เช่น: วิธีดูแลผิวแห้ง, ทำไมต้องทากันแดด..."></textarea>
+      </div>
+      <!-- Paste mode -->
+      <div id="modePasteBox" style="display:none;">
+        <textarea id="pasteInput" class="input-field" rows="5" placeholder="วางเนื้อหาที่มีอยู่แล้วตรงนี้เลยคะ&#10;AI จะแค่จัดให้เป็น slides ไม่เปลี่ยนคำ"></textarea>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">
+        <label class="input-label" style="margin:0;white-space:nowrap;">จำนวนสไลด์</label>
+        <div style="display:flex;gap:3px;flex:1;">
+          <button class="ratio-btn" onclick="setSlideCount(5,this)">5</button>
+          <button class="ratio-btn active" id="scBtn7" onclick="setSlideCount(7,this)">7</button>
+          <button class="ratio-btn" onclick="setSlideCount(9,this)">9</button>
+          <button class="ratio-btn" onclick="setSlideCount(12,this)">12</button>
+        </div>
+      </div>
+      <button class="btn btn-full" onclick="generateContent()" id="genBtn">✦ สร้างด้วย AI</button>
+      <div class="loading" id="loading">
+        <div class="spinner"></div>
+        <div class="loading-text" id="loadingText">กำลังคิด...</div>
+      </div>
+    </div>
+
+    <div class="section-label">แก้ไขสไลด์ที่ <span id="slideNumLabel" style="color:var(--accent);">1</span></div>
+
+    <div class="input-group">
+      <label class="input-label">Tag (ป้ายบน)</label>
+      <input type="text" id="editTag" class="input-field" placeholder="COVER, TIP 1, CTA..." oninput="liveUpdate()">
+    </div>
+    <div class="input-group">
+      <label class="input-label">Title (หัวข้อหลัก)</label>
+      <input type="text" id="editTitle" class="input-field" placeholder="หัวข้อที่ดึงดูด" oninput="liveUpdate()">
+    </div>
+    <div class="input-group">
+      <label class="input-label">Subtitle (ประโยคเสริม)</label>
+      <input type="text" id="editSubtitle" class="input-field" placeholder="อธิบายสั้นๆ หรือ hook..." oninput="liveUpdate()">
+    </div>
+    <div class="input-group">
+      <label class="input-label">Bullets (เนื้อหา)</label>
+      <input type="text" id="editB1" class="input-field" placeholder="ประเด็นที่ 1" oninput="liveUpdate()">
+      <input type="text" id="editB2" class="input-field" placeholder="ประเด็นที่ 2" oninput="liveUpdate()">
+      <input type="text" id="editB3" class="input-field" placeholder="ประเด็นที่ 3" oninput="liveUpdate()">
+      <input type="text" id="editB4" class="input-field" placeholder="ประเด็นที่ 4" oninput="liveUpdate()">
+      <input type="text" id="editB5" class="input-field" placeholder="ประเด็นที่ 5" oninput="liveUpdate()">
+    </div>
+  </div>
+
+  <!-- TAB: Manage -->
+  <div id="manage" class="tab-content">
+    <div class="section-label">จัดการสไลด์ (ลากเพื่อเรียงลำดับ)</div>
+    <div class="slide-list" id="slideList"></div>
+    <div class="btn-row">
+      <button class="btn btn-ghost" onclick="addSlide()">＋ เพิ่ม</button>
+      <button class="btn btn-ghost" onclick="duplicateSlide()">⧉ คัดลอก</button>
+      <button class="btn btn-danger" onclick="deleteSlide()">✕ ลบ</button>
+    </div>
+  </div>
+
+  <!-- TAB: Caption -->
+  <div id="caption" class="tab-content">
+    <div class="ai-box">
+      <div class="input-label">✦ สร้าง Caption + Hashtag ด้วย AI</div>
+      <div style="font-size:9px; color:var(--muted); margin-bottom:8px;">AI จะอ่านเนื้อหาสไลด์ทั้งหมดแล้วเขียน caption ภาษาไทยให้</div>
+      <div class="input-group">
+        <label class="input-label">Platform</label>
+        <select id="captionPlatform" class="input-field" style="cursor:pointer;">
+          <option value="tiktok">TikTok</option>
+          <option value="instagram">Instagram</option>
+          <option value="both">TikTok + Instagram</option>
+        </select>
+      </div>
+      <div class="input-group">
+        <label class="input-label">สไตล์</label>
+        <select id="captionStyle" class="input-field" style="cursor:pointer;">
+          <option value="casual">Casual (เป็นกันเอง)</option>
+          <option value="educational">Educational (สอน)</option>
+          <option value="hook">Hook-first (ดึงดูดทันที)</option>
+        </select>
+      </div>
+      <button class="btn btn-full" onclick="generateCaption()" id="captionBtn">✦ สร้าง Caption</button>
+      <div class="loading" id="captionLoading">
+        <div class="spinner"></div>
+        <div class="loading-text">กำลังเขียน...</div>
+      </div>
+    </div>
+
+    <div class="section-label">Caption</div>
+    <div style="position:relative; margin-bottom:8px;">
+      <div class="caption-output empty" id="captionOutput">ยังไม่มี caption — กด "สร้าง Caption" ด้านบน</div>
+    </div>
+
+    <div class="section-label">Hashtags</div>
+    <div style="position:relative; margin-bottom:8px;">
+      <div class="caption-output empty" id="hashtagOutput">ยังไม่มี hashtag</div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-ghost" onclick="copyText('captionOutput')">📋 Copy Caption</button>
+      <button class="btn btn-ghost" onclick="copyText('hashtagOutput')">📋 Copy Hashtag</button>
+    </div>
+  </div>
+
+  <!-- TAB: Theme -->
+  <div id="theme" class="tab-content">
+    <div class="section-label">Theme</div>
+    <div class="theme-grid" id="themeGrid"></div>
+  </div>
+
+  <!-- TAB: Settings -->
+  <div id="settings" class="tab-content">
+    <div class="section-label">ทั่วไป</div>
+    <div class="input-group">
+      <label class="input-label">Watermark</label>
+      <input type="text" id="watermark" class="input-field" value="@YUIACHI" oninput="renderSlide()">
+    </div>
+    <div style="margin-bottom:10px;">
+      <div class="input-label">Font Size</div>
+      <div class="slider-row">
+        <input type="range" class="slider" id="fontSize" min="70" max="140" value="100" oninput="updateFontSize()">
+        <div class="slider-val" id="fontSizeVal">100%</div>
+      </div>
+    </div>
+
+    <div class="section-label">Export</div>
+    <div class="input-group">
+      <label class="input-label">ชื่อไฟล์ prefix</label>
+      <input type="text" id="exportPrefix" class="input-field" value="yuiachi" placeholder="yuiachi">
+    </div>
+  </div>
+
+</div><!-- /container -->
+
+<!-- Save Modal -->
+<div class="modal" id="saveModal">
+  <div class="modal-content">
+    <div class="modal-title">💾 บันทึกโปรเจกต์</div>
+    <input type="text" class="modal-input" id="projectName" placeholder="ชื่อโปรเจกต์">
+    <div class="modal-buttons">
+      <button class="btn" onclick="saveProject()">บันทึก</button>
+      <button class="btn btn-ghost" onclick="closeModal('saveModal')">ยกเลิก</button>
+    </div>
+  </div>
+</div>
+
+<!-- Load Modal -->
+<div class="modal" id="loadModal">
+  <div class="modal-content">
+    <div class="modal-title">📂 โหลดโปรเจกต์</div>
+    <div id="projectList" style="margin-bottom:10px;"></div>
+    <div class="modal-buttons">
+      <button class="btn btn-ghost btn-full" onclick="closeModal('loadModal')">ปิด</button>
+    </div>
+  </div>
+</div>
+
+<!-- Install -->
+<div class="install-prompt" id="installPrompt" style="display:none;">
+  <span>Add to Home Screen</span>
+  <button onclick="installApp()">Install</button>
+</div>
+
+<script>
+/* ════════════════════════════════════════
+   THEMES
+════════════════════════════════════════ */
+const THEMES = {
+  ivory:     { label:'Ivory',    bg:'#FDFBF7', text:'#1c1a17', accent:'#c08b3c', bullet:'#c08b3c' },
+  noir:      { label:'Noir',     bg:'#0f0e0c', text:'#e8dfd0', accent:'#c9a96e', bullet:'#c9a96e' },
+  rose:      { label:'Rose',     bg:'#f5ede9', text:'#3b1a13', accent:'#b25c4a', bullet:'#b25c4a' },
+  sage:      { label:'Sage',     bg:'#f0f4f0', text:'#1e2e1e', accent:'#4a7c5e', bullet:'#4a7c5e' },
+  lavender:  { label:'Lavender', bg:'#f2eff9', text:'#2a1d4a', accent:'#7c5cbf', bullet:'#7c5cbf' },
+  ocean:     { label:'Ocean',    bg:'#e9f3f8', text:'#0d2535', accent:'#1b6fa8', bullet:'#1b6fa8' },
+  charcoal:  { label:'Charcoal', bg:'#1e2028', text:'#d8d5cc', accent:'#e0b878', bullet:'#e0b878' },
+  peach:     { label:'Peach',    bg:'#fff4ef', text:'#3a1808', accent:'#e0703a', bullet:'#e0703a' },
+  matcha:    { label:'Matcha',   bg:'#f3f7f1', text:'#1a2b1a', accent:'#6b9a5c', bullet:'#6b9a5c' },
+  slate:     { label:'Slate',    bg:'#1a1f2e', text:'#ccd6f6', accent:'#8892a4', bullet:'#8892a4' },
+};
+
+/* ════════════════════════════════════════
+   STATE
+════════════════════════════════════════ */
+let SLIDES = [
+  { tag:'COVER',  title:'5 นิสัยดีที่เปลี่ยนผิว', subtitle:'เริ่มต้นวันนี้ ผิวดีขึ้นใน 21 วัน', b1:'', b2:'', b3:'', b4:'', b5:'' },
+  { tag:'TIP 1',  title:'ล้างหน้าสม่ำเสมอ', subtitle:'พื้นฐานที่หลายคนมองข้าม', b1:'ล้างหน้า 2 ครั้ง/วัน', b2:'เช้า–เย็น', b3:'ผิวใสไม่อุดตัน', b4:'ใช้ cleanser อ่อนโยน', b5:'' },
+  { tag:'TIP 2',  title:'ครีมกันแดด SPF50+', subtitle:'ป้องกัน UVA/UVB ทุกวัน', b1:'ทาหลัง moisturizer', b2:'Reapply ทุก 2–3 ชม.', b3:'ลด dark spot', b4:'ชะลอริ้วรอย', b5:'' },
+  { tag:'TIP 3',  title:'นอนหลับ 7–8 ชั่วโมง', subtitle:'ผิวซ่อมแซมขณะหลับ', b1:'ลด puffy eyes', b2:'สีผิวกระจ่าง', b3:'ลด cortisol', b4:'ผิวเรียบเนียน', b5:'' },
+  { tag:'TIP 4',  title:'ดื่มน้ำ 2 ลิตร/วัน', subtitle:'Hydration จากภายใน', b1:'ผิวชุ่มชื้น', b2:'ขับสารพิษ', b3:'ลดริ้วรอย', b4:'น้ำมันผิวสมดุล', b5:'' },
+  { tag:'TIP 5',  title:'Moisturizer เช้า–เย็น', subtitle:'กักเก็บความชุ่มชื้น', b1:'เสริม skin barrier', b2:'ผิวเด้งไม่แห้ง', b3:'ทาขณะผิวยังชื้น', b4:'เลือกตามสภาพผิว', b5:'' },
+  { tag:'CTA',    title:'เริ่มวันนี้เลย', subtitle:'ทำได้ทุกคน ไม่ต้องแพง', b1:'เลือก 1 นิสัย', b2:'ทำ 21 วันติดต่อกัน', b3:'Share ให้เพื่อนด้วย', b4:'Follow @YUIACHI', b5:'' },
+];
+
+let currentSlide = 0;
+let currentTheme = 'ivory';
+let currentRatio = '4:5';
+let fontSize = 100;
+let historyStack = [JSON.parse(JSON.stringify(SLIDES))];
+let historyIndex = 0;
+let deferredPrompt;
+let dragSrcIndex = null;
+
+/* ════════════════════════════════════════
+   INIT
+════════════════════════════════════════ */
+function init() {
+  buildThemeGrid();
+  renderSlide();
+  buildSlideList();
+  registerServiceWorker();
+  setupInstallPrompt();
+}
+
+/* ════════════════════════════════════════
+   RENDER
+════════════════════════════════════════ */
+function renderSlide() {
+  const slide = SLIDES[currentSlide];
+  const theme = THEMES[currentTheme];
+  const canvas = document.getElementById('slideCanvas');
+  const fs = fontSize / 100;
+
+  canvas.style.backgroundColor = theme.bg;
+  canvas.style.color = theme.text;
+  canvas.setAttribute('data-ratio', currentRatio);
+
+  const bulletList = [slide.b1,slide.b2,slide.b3,slide.b4,slide.b5].filter(b => b && b.trim());
+  const bulletCount = bulletList.length;
+  // ── auto-scale: คำนวณจาก char count + จำนวน bullets ──
+  const totalChars = bulletList.join('').length + (slide.title||'').length + (slide.subtitle||'').length;
+  // score รวม: chars + weight ต่อ bullet
+  const contentScore = totalChars + bulletCount * 12;
+  let autoScale = 1;
+  if      (contentScore > 280) autoScale = 0.62;
+  else if (contentScore > 220) autoScale = 0.70;
+  else if (contentScore > 170) autoScale = 0.78;
+  else if (contentScore > 120) autoScale = 0.86;
+  else if (contentScore > 80)  autoScale = 0.93;
+
+  const titlePx    = (20 * fs * autoScale).toFixed(1);
+  const subtitlePx = (9  * fs * autoScale).toFixed(1);
+  const bodyPx     = (9.5 * fs * autoScale).toFixed(1);
+  const lineHeight = contentScore > 170 ? 1.45 : contentScore > 100 ? 1.60 : 1.75;
+  const bulletGap  = contentScore > 170 ? 2 : contentScore > 100 ? 4 : 6;
+
+  const bullets = bulletList
+    .map(b => `<div class="slide-bullet" style="margin-bottom:${bulletGap}px;">
+      <div class="bullet-mark" style="background:${theme.bullet};margin-top:${Math.round(parseFloat(bodyPx)*0.45)}px;"></div>
+      <div>${escHtml(b)}</div>
+    </div>`).join('');
+
+  canvas.innerHTML = `
+    <div class="slide-top">
+      <div class="slide-eyebrow" style="color:${theme.accent};">${escHtml(slide.tag)}</div>
+      <div class="slide-title" style="font-size:${titlePx}px; color:${theme.accent};">${escHtml(slide.title)}</div>
+      ${slide.subtitle ? `<div class="slide-subtitle" style="font-size:${subtitlePx}px;">${escHtml(slide.subtitle)}</div>` : ''}
+      <div class="slide-divider" style="background:${theme.accent};"></div>
+    </div>
+    <div class="slide-mid">
+      <div class="slide-body" style="font-size:${bodyPx}px;line-height:${lineHeight};">${bullets}</div>
+    </div>
+    <div class="slide-bot">
+      <div class="slide-footer" style="border-color:${theme.accent}20;">
+        <div>${escHtml(document.getElementById('watermark').value)}</div>
+        <div>${currentSlide+1} / ${SLIDES.length}</div>
+      </div>
+    </div>
+  `;
+
+  // Sync editor fields
+  document.getElementById('editTag').value      = slide.tag      || '';
+  document.getElementById('editTitle').value    = slide.title    || '';
+  document.getElementById('editSubtitle').value = slide.subtitle || '';
+  document.getElementById('editB1').value       = slide.b1       || '';
+  document.getElementById('editB2').value       = slide.b2       || '';
+  document.getElementById('editB3').value       = slide.b3       || '';
+  document.getElementById('editB4').value       = slide.b4       || '';
+  document.getElementById('editB5').value       = slide.b5       || '';
+  document.getElementById('slideNumLabel').textContent = currentSlide + 1;
+
+  buildDots();
+  buildSlideList();
+}
+
+function escHtml(s) {
+  return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function buildDots() {
+  const dots = document.getElementById('dots');
+  dots.innerHTML = '';
+  SLIDES.forEach((_,i) => {
+    const d = document.createElement('div');
+    d.className = `dot ${i===currentSlide?'active':''}`;
+    d.onclick = () => goToSlide(i);
+    dots.appendChild(d);
+  });
+}
+
+/* ════════════════════════════════════════
+   SLIDE LIST (DRAG + DROP)
+════════════════════════════════════════ */
+function buildSlideList() {
+  const list = document.getElementById('slideList');
+  list.innerHTML = '';
+  SLIDES.forEach((slide,i) => {
+    const item = document.createElement('div');
+    item.className = `slide-list-item ${i===currentSlide?'active':''}`;
+    item.draggable = true;
+    item.dataset.index = i;
+    item.innerHTML = `
+      <span class="drag-handle">⠿</span>
+      <div class="slide-list-num">${i+1}</div>
+      <div class="slide-list-title">${escHtml(slide.title)||'(ว่าง)'}</div>
+    `;
+    item.onclick = (e) => {
+      if (e.target.classList.contains('drag-handle')) return;
+      goToSlide(i);
+    };
+    // Drag events
+    item.addEventListener('dragstart', e => {
+      dragSrcIndex = i;
+      setTimeout(() => item.classList.add('dragging'), 0);
+    });
+    item.addEventListener('dragend', () => {
+      item.classList.remove('dragging');
+      document.querySelectorAll('.slide-list-item').forEach(el => el.classList.remove('drag-over'));
+    });
+    item.addEventListener('dragover', e => {
+      e.preventDefault();
+      document.querySelectorAll('.slide-list-item').forEach(el => el.classList.remove('drag-over'));
+      item.classList.add('drag-over');
+    });
+    item.addEventListener('drop', e => {
+      e.preventDefault();
+      const targetIndex = parseInt(item.dataset.index);
+      if (dragSrcIndex !== null && dragSrcIndex !== targetIndex) {
+        const moved = SLIDES.splice(dragSrcIndex, 1)[0];
+        SLIDES.splice(targetIndex, 0, moved);
+        currentSlide = targetIndex;
+        saveHistory();
+        renderSlide();
+        showToast('เรียงลำดับสำเร็จ');
+      }
+      dragSrcIndex = null;
+    });
+    list.appendChild(item);
+  });
+}
+
+/* ════════════════════════════════════════
+   NAVIGATION
+════════════════════════════════════════ */
+function goToSlide(i)     { currentSlide = i; renderSlide(); }
+function nextSlide()      { currentSlide = (currentSlide+1) % SLIDES.length; renderSlide(); }
+function previousSlide()  { currentSlide = (currentSlide-1+SLIDES.length) % SLIDES.length; renderSlide(); }
+
+function setRatio(ratio, btn) {
+  currentRatio = ratio;
+  document.querySelectorAll('.ratio-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderSlide();
+}
+
+/* ════════════════════════════════════════
+   EDITOR
+════════════════════════════════════════ */
+function liveUpdate() {
+  const s = SLIDES[currentSlide];
+  s.tag      = document.getElementById('editTag').value;
+  s.title    = document.getElementById('editTitle').value;
+  s.subtitle = document.getElementById('editSubtitle').value;
+  s.b1       = document.getElementById('editB1').value;
+  s.b2       = document.getElementById('editB2').value;
+  s.b3       = document.getElementById('editB3').value;
+  s.b4       = document.getElementById('editB4').value;
+  s.b5       = document.getElementById('editB5').value;
+  saveHistory();
+  renderSlide();
+}
+
+function updateFontSize() {
+  fontSize = parseInt(document.getElementById('fontSize').value);
+  document.getElementById('fontSizeVal').textContent = fontSize + '%';
+  renderSlide();
+}
+
+/* ════════════════════════════════════════
+   SLIDE MANAGEMENT
+════════════════════════════════════════ */
+function addSlide() {
+  SLIDES.splice(currentSlide+1, 0, { tag:'NEW', title:'หัวข้อใหม่', subtitle:'', b1:'', b2:'', b3:'', b4:'', b5:'' });
+  currentSlide = currentSlide + 1;
+  saveHistory();
+  renderSlide();
+  showToast('เพิ่มสไลด์สำเร็จ');
+}
+
+function duplicateSlide() {
+  const copy = JSON.parse(JSON.stringify(SLIDES[currentSlide]));
+  SLIDES.splice(currentSlide+1, 0, copy);
+  currentSlide = currentSlide + 1;
+  saveHistory();
+  renderSlide();
+  showToast('คัดลอกสำเร็จ');
+}
+
+function deleteSlide() {
+  if (SLIDES.length <= 1) { showToast('ต้องมีอย่างน้อย 1 สไลด์','error'); return; }
+  SLIDES.splice(currentSlide, 1);
+  currentSlide = Math.min(currentSlide, SLIDES.length-1);
+  saveHistory();
+  renderSlide();
+  showToast('ลบสำเร็จ');
+}
+
+/* ════════════════════════════════════════
+   HISTORY
+════════════════════════════════════════ */
+function saveHistory() {
+  historyStack = historyStack.slice(0, historyIndex+1);
+  historyStack.push(JSON.parse(JSON.stringify(SLIDES)));
+  historyIndex = historyStack.length - 1;
+  updateHistoryButtons();
+}
+
+function undo() {
+  if (historyIndex > 0) {
+    historyIndex--;
+    SLIDES = JSON.parse(JSON.stringify(historyStack[historyIndex]));
+    renderSlide();
+    updateHistoryButtons();
+  }
+}
+
+function redo() {
+  if (historyIndex < historyStack.length-1) {
+    historyIndex++;
+    SLIDES = JSON.parse(JSON.stringify(historyStack[historyIndex]));
+    renderSlide();
+    updateHistoryButtons();
+  }
+}
+
+function updateHistoryButtons() {
+  document.getElementById('undoBtn').disabled = historyIndex === 0;
+  document.getElementById('redoBtn').disabled = historyIndex === historyStack.length-1;
+}
+
+/* ════════════════════════════════════════
+   API KEY (ฝังไว้ในไฟล์)
+════════════════════════════════════════ */
+const API_KEY = 'YOUR_API_KEY_HERE'; // ← ใส่ key ตรงนี้
+
+function getApiKey() { return API_KEY; }
+
+/* ════════════════════════════════════════
+   SLIDE COUNT SELECTOR
+════════════════════════════════════════ */
+let slideCount = 7;
+
+function setSlideCount(n, btn) {
+  slideCount = n;
+  document.querySelectorAll('.ai-box .ratio-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+/* ════════════════════════════════════════
+   AI MODE
+════════════════════════════════════════ */
+let aiMode = 'gen';
+
+function setMode(mode, btn) {
+  aiMode = mode;
+  document.querySelectorAll('#modeGen,#modePaste').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('modeGenBox').style.display  = mode === 'gen'   ? 'block' : 'none';
+  document.getElementById('modePasteBox').style.display = mode === 'paste' ? 'block' : 'none';
+}
+
+/* ════════════════════════════════════════
+   AI GENERATE SLIDES
+════════════════════════════════════════ */
+async function generateContent() {
+  const genBtn   = document.getElementById('genBtn');
+  const loadingEl = document.getElementById('loading');
+  const loadingText = document.getElementById('loadingText');
+
+  let prompt = '';
+
+  if (aiMode === 'gen') {
+    const topic = document.getElementById('topicInput').value.trim();
+    if (!topic) { showToast('พิมพ์หัวข้อก่อนนะคะ','error'); return; }
+
+    prompt = `เธอเป็นสาวไทยธรรมดา อายุ 35+ ที่ชอบดูแลตัวเอง
+กำลังจะทำ carousel TikTok เรื่อง: "${topic}"
+สร้าง ${slideCount} slides
+
+โทน: คุยกับเพื่อนสนิท ไม่ใช่สอนหนังสือ ไม่ต้องฟังดูฉลาด
+ห้ามใช้คำพวกนี้เด็ดขาด: "สำคัญมาก" "อย่างมีประสิทธิภาพ" "เพิ่มประสิทธิภาพ" "ปรับสมดุล" "บำรุง" "ฟื้นฟู" "กระตุ้น" หรือคำภาษาอังกฤษที่ไม่จำเป็น
+ใช้ภาษาพูดจริงๆ เช่น "ผิวแห้งแตก" ไม่ใช่ "ผิวขาดความชุ่มชื้น"
+
+กฎ HOOK (title ของ COVER slide):
+- ต้องหยุดคนเลื่อนได้ทันที
+- สั้นกระชับ ไม่เกิน 5 คำ
+- ใช้รูปแบบใดรูปแบบหนึ่ง: คำถามที่โดนใจ ("ทำไมผิวไม่ดีขึ้นสักที?") / ตัวเลข ("5 อย่างที่ทำผิดอยู่") / สิ่งที่คนรู้สึกอยู่แล้ว ("เหนื่อยกับผิวมาก")
+- ห้ามขึ้นต้นด้วย "วิธี" หรือ "เคล็ดลับ"
+
+กฎ CONTENT (bullets):
+- แต่ละ bullet ไม่เกิน 15 คำ
+- พูดตรงๆ ไม่อ้อมค้อม
+- ถ้าไม่มีข้อมูลจริงพอ ใส่ "" ดีกว่าแต่งมั่ว
+
+ตอบเป็น JSON array เท่านั้น ไม่มี text อื่น ไม่มี backtick:
+[{"tag":"COVER","title":"...","subtitle":"...","b1":"...","b2":"...","b3":"...","b4":"...","b5":"..."}]
+
+กฎ JSON:
+- ใช้ double quotes เสมอ
+- ห้ามมี apostrophe ในค่า
+- ไม่มี trailing comma
+- ไม่มี line break ใน string
+
+กฎเนื้อหา:
+- tag: ภาษาอังกฤษสั้น (COVER / TIP 1 / WHY / HOW / CTA)
+- title: ไทย ไม่เกิน 5 คำ เป็น hook ที่หยุดคนดูได้
+- subtitle: ไทย 1 ประโยคสั้น ฟังดูเป็นคนจริงๆ ไม่เกิน 10 คำ
+- b1-b5: ภาษาพูด กระชับ แต่ละข้อไม่เกิน 15 คำ ถ้าไม่มีให้ใส่ ""`;
+
+  } else {
+    const content = document.getElementById('pasteInput').value.trim();
+    if (!content) { showToast('วางเนื้อหาก่อนนะคะ','error'); return; }
+
+    prompt = `ช่วยแบ่งเนื้อหานี้เป็น ${slideCount} slides สำหรับ carousel TikTok
+ห้ามเปลี่ยนความหมาย แต่ตัดให้สั้นลงถ้าข้อความยาวเกิน
+
+เนื้อหาที่ให้:
+"""
+${content}
+"""
+
+ตอบเป็น JSON array เท่านั้น ไม่มี text อื่น ไม่มี backtick:
+[{"tag":"COVER","title":"...","subtitle":"...","b1":"...","b2":"...","b3":"...","b4":"...","b5":"..."}]
+
+กฎ JSON:
+- ใช้ double quotes เสมอ
+- ห้ามมี apostrophe ในค่า
+- ไม่มี trailing comma
+- ไม่มี line break ใน string
+
+กฎความยาว (สำคัญมาก — ถ้าเกินจะล้นหน้าจอ):
+- title: ไม่เกิน 5 คำ ถ้ายาวกว่านี้ให้ตัดให้สั้นลง
+- subtitle: ไม่เกิน 10 คำ
+- b1-b5: แต่ละข้อไม่เกิน 15 คำ ถ้ายาวกว่านี้ให้แบ่งเป็น 2 bullet แทน
+- ถ้า 1 slide มี bullets เกิน 4 ข้อ และแต่ละข้อยาว ให้แยกเป็น 2 slides
+- ถ้าไม่มีข้อมูลพอให้ใส่ ""`;
+  }
+
+  loadingEl.classList.add('show');
+  genBtn.disabled = true;
+  loadingText.textContent = aiMode === 'paste' ? 'กำลังจัดสไลด์...' : 'กำลังคิด...';
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': API_KEY,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true',
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 3000,
+        messages: [{ role: 'user', content: prompt }]
+      })
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error?.message || `HTTP ${res.status}`);
+    }
+
+    const data = await res.json();
+    const raw = data.content.map(c => c.text || '').join('');
+    const match = raw.match(/\[[\s\S]*\]/);
+    if (!match) throw new Error('ไม่พบ JSON ในคำตอบ');
+
+    let jsonStr = match[0]
+      .replace(/[\u2018\u2019]/g, "'")
+      .replace(/[\u201C\u201D]/g, '"')
+      .replace(/,\s*([}\]])/g, '$1');
+
+    const slides = JSON.parse(jsonStr);
+    if (!Array.isArray(slides) || slides.length === 0) throw new Error('JSON ว่างเปล่า');
+
+    SLIDES = slides.map(s => ({
+      tag:      String(s.tag      || ''),
+      title:    String(s.title    || ''),
+      subtitle: String(s.subtitle || ''),
+      b1:       String(s.b1       || ''),
+      b2:       String(s.b2       || ''),
+      b3:       String(s.b3       || ''),
+      b4:       String(s.b4       || ''),
+      b5:       String(s.b5       || ''),
+    }));
+
+    currentSlide = 0;
+    saveHistory();
+    renderSlide();
+    showToast(`✦ สร้าง ${SLIDES.length} สไลด์สำเร็จ!`, 'success');
+    switchTab('preview', document.querySelector('[onclick*="preview"]'));
+
+  } catch(e) {
+    console.error('generateContent error:', e);
+    showToast('เกิดข้อผิดพลาด — ลองใหม่นะคะ', 'error');
+  } finally {
+    loadingEl.classList.remove('show');
+    genBtn.disabled = false;
+  }
+}
+
+/* ════════════════════════════════════════
+   AI CAPTION
+════════════════════════════════════════ */
+async function generateCaption() {
+  const platform = document.getElementById('captionPlatform').value;
+  const style    = document.getElementById('captionStyle').value;
+  const captionBtn = document.getElementById('captionBtn');
+  const loadingEl  = document.getElementById('captionLoading');
+  captionBtn.disabled = true;
+  loadingEl.classList.add('show');
+
+  const slidesSummary = SLIDES.map((s,i) =>
+    `[${i+1}] ${s.tag}: ${s.title}${s.subtitle?' - '+s.subtitle:''}${[s.b1,s.b2,s.b3,s.b4,s.b5].filter(Boolean).map(b=>' • '+b).join('')}`
+  ).join('\n');
+
+  const styleMap = {
+    casual: 'เป็นกันเอง พูดเหมือนเพื่อน ใช้ emoji เหมาะสม',
+    educational: 'ให้ข้อมูล มีน้ำหนัก น่าเชื่อถือ แต่ไม่เป็นทางการเกิน',
+    hook: 'เริ่มด้วย hook แรงๆ ที่ดึงคนหยุดดูทันที',
+  };
+  const platformMap = {
+    tiktok: 'TikTok (caption สั้น 150-200 ตัวอักษร)',
+    instagram: 'Instagram (caption ยาวได้ 300-500 ตัวอักษร)',
+    both: 'TikTok และ Instagram (เขียนแยกกัน 2 แบบ)',
+  };
+
+  const prompt = `You are a Thai girl writing a caption for your TikTok/Instagram post.
+
+Slide content:
+${slidesSummary}
+
+Platform: ${platformMap[platform]}
+Style: ${styleMap[style]}
+
+Your voice = talking to a close friend. Warm, casual, real. NOT an expert.
+- Simple everyday Thai, no technical terms
+- Write like you actually experienced this and want to share with friends
+- No stiff or formal language
+
+Reply in this exact format only:
+CAPTION:
+[caption here]
+
+HASHTAGS:
+[hashtags here]
+
+Rules:
+- Caption must open with a hook that makes someone stop scrolling
+- Hashtags: mix Thai + English, 15-20 tags total
+- No extra explanation outside the format`;
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'anthropic-dangerous-direct-browser-access': 'true',
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 1000,
+        messages: [{ role:'user', content: prompt }]
+      })
+    });
+
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    const text = data.content.map(c=>c.text||'').join('');
+
+    const captionMatch  = text.match(/CAPTION:\s*([\s\S]*?)(?=HASHTAGS:|$)/i);
+    const hashtagMatch  = text.match(/HASHTAGS:\s*([\s\S]*?)$/i);
+
+    const captionOut  = document.getElementById('captionOutput');
+    const hashtagOut  = document.getElementById('hashtagOutput');
+
+    if (captionMatch) {
+      captionOut.textContent = captionMatch[1].trim();
+      captionOut.classList.remove('empty');
+    }
+    if (hashtagMatch) {
+      hashtagOut.textContent = hashtagMatch[1].trim();
+      hashtagOut.classList.remove('empty');
+    }
+
+    showToast('✦ สร้าง caption สำเร็จ!','success');
+  } catch(e) {
+    showToast('เกิดข้อผิดพลาด','error');
+  } finally {
+    captionBtn.disabled = false;
+    loadingEl.classList.remove('show');
+  }
+}
+
+function copyText(elId) {
+  const el = document.getElementById(elId);
+  const text = el.textContent;
+  if (!text || el.classList.contains('empty')) { showToast('ยังไม่มีข้อความ','error'); return; }
+  navigator.clipboard.writeText(text).then(() => showToast('คัดลอกแล้ว!','success'));
+}
+
+/* ════════════════════════════════════════
+   EXPORT
+════════════════════════════════════════ */
+async function exportSlide() {
+  try {
+    const prefix = document.getElementById('exportPrefix').value || 'yuiachi';
+    const canvas = await html2canvas(document.getElementById('slideCanvas'), {
+      scale: 3,
+      backgroundColor: THEMES[currentTheme].bg,
+      useCORS: true,
+      logging: false,
+    });
+    const link = document.createElement('a');
+    link.href = canvas.toDataURL('image/png');
+    link.download = `${prefix}-slide-${currentSlide+1}.png`;
+    link.click();
+    showToast('ดาวน์โหลดสำเร็จ!','success');
+  } catch(e) {
+    showToast('ดาวน์โหลดไม่สำเร็จ','error');
+  }
+}
+
+async function exportAllSlides() {
+  const progressBar = document.getElementById('zipProgress');
+  const fill        = document.getElementById('zipFill');
+  progressBar.classList.add('show');
+  fill.style.width = '0%';
+
+  const prefix = document.getElementById('exportPrefix').value || 'yuiachi';
+  const zip = new JSZip();
+  const savedSlide = currentSlide;
+  const slideCanvas = document.getElementById('slideCanvas');
+
+  try {
+    for (let i = 0; i < SLIDES.length; i++) {
+      currentSlide = i;
+      renderSlide();
+      await new Promise(r => setTimeout(r, 180)); // let DOM paint
+
+      const canvas = await html2canvas(slideCanvas, {
+        scale: 3,
+        backgroundColor: THEMES[currentTheme].bg,
+        useCORS: true,
+        logging: false,
+      });
+      const blob = await new Promise(r => canvas.toBlob(r, 'image/png'));
+      zip.file(`${prefix}-slide-${String(i+1).padStart(2,'0')}.png`, blob);
+
+      fill.style.width = ((i+1)/SLIDES.length*100) + '%';
+    }
+
+    const zipBlob = await zip.generateAsync({ type:'blob' });
+    const url = URL.createObjectURL(zipBlob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${prefix}-slides.zip`;
+    link.click();
+    URL.revokeObjectURL(url);
+    showToast(`✦ Export ${SLIDES.length} สไลด์สำเร็จ!`,'success');
+  } catch(e) {
+    showToast('Export ไม่สำเร็จ','error');
+  } finally {
+    currentSlide = savedSlide;
+    renderSlide();
+    setTimeout(() => progressBar.classList.remove('show'), 800);
+  }
+}
+
+/* ════════════════════════════════════════
+   THEMES
+════════════════════════════════════════ */
+function buildThemeGrid() {
+  const grid = document.getElementById('themeGrid');
+  Object.entries(THEMES).forEach(([key,theme]) => {
+    const btn = document.createElement('button');
+    btn.className = `theme-btn ${key===currentTheme?'active':''}`;
+    btn.style.backgroundColor = theme.bg;
+    btn.style.color = theme.text;
+    btn.innerHTML = `${theme.label}<div class="theme-name">${key}</div>`;
+    btn.onclick = () => selectTheme(key, btn);
+    grid.appendChild(btn);
+  });
+}
+
+function selectTheme(name, btn) {
+  currentTheme = name;
+  document.querySelectorAll('.theme-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderSlide();
+}
+
+/* ════════════════════════════════════════
+   TABS
+════════════════════════════════════════ */
+function switchTab(tab, btn) {
+  document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+  document.getElementById(tab).classList.add('active');
+  if (btn) btn.classList.add('active');
+}
+
+/* ════════════════════════════════════════
+   SAVE / LOAD
+════════════════════════════════════════ */
+function openSaveModal() {
+  document.getElementById('projectName').value = '';
+  document.getElementById('saveModal').classList.add('show');
+  setTimeout(() => document.getElementById('projectName').focus(), 100);
+}
+
+function saveProject() {
+  const name = document.getElementById('projectName').value.trim();
+  if (!name) { showToast('ใส่ชื่อโปรเจกต์ก่อน','error'); return; }
+  const projects = JSON.parse(localStorage.getItem('yuiachiProjects') || '{}');
+  projects[name] = {
+    slides: SLIDES, theme: currentTheme,
+    fontSize, ratio: currentRatio,
+    date: new Date().toLocaleString('th-TH')
+  };
+  localStorage.setItem('yuiachiProjects', JSON.stringify(projects));
+  closeModal('saveModal');
+  showToast('บันทึกสำเร็จ!','success');
+}
+
+function openLoadModal() {
+  const projects = JSON.parse(localStorage.getItem('yuiachiProjects') || '{}');
+  const list = document.getElementById('projectList');
+  list.innerHTML = '';
+
+  if (!Object.keys(projects).length) {
+    list.innerHTML = '<p style="color:var(--muted);font-size:11px;">ยังไม่มีโปรเจกต์บันทึกไว้</p>';
+    document.getElementById('loadModal').classList.add('show');
+    return;
+  }
+
+  Object.entries(projects).sort((a,b)=>b[1].date.localeCompare(a[1].date)).forEach(([name,data]) => {
+    const item = document.createElement('div');
+    item.style.cssText = 'padding:8px;background:var(--surface2);border-radius:6px;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center;';
+    item.innerHTML = `
+      <div>
+        <div style="font-weight:600;font-size:11px;">${escHtml(name)}</div>
+        <div style="font-size:9px;color:var(--muted);">${data.date} · ${data.slides.length} สไลด์</div>
+      </div>
+      <div style="display:flex;gap:4px;">
+        <button class="icon-btn" onclick="loadProject('${escHtml(name)}')" style="width:auto;padding:5px 8px;font-size:10px;">โหลด</button>
+        <button class="icon-btn" onclick="deleteProject('${escHtml(name)}')" style="width:auto;padding:5px 8px;font-size:10px;color:var(--danger);">ลบ</button>
+      </div>
+    `;
+    list.appendChild(item);
+  });
+
+  document.getElementById('loadModal').classList.add('show');
+}
+
+function loadProject(name) {
+  const projects = JSON.parse(localStorage.getItem('yuiachiProjects') || '{}');
+  if (projects[name]) {
+    const p = projects[name];
+    SLIDES = p.slides.map(s => ({
+      tag:s.tag||'', title:s.title||'', subtitle:s.subtitle||'',
+      b1:s.b1||'', b2:s.b2||'', b3:s.b3||'', b4:s.b4||'', b5:s.b5||''
+    }));
+    currentTheme = p.theme || 'ivory';
+    fontSize = p.fontSize || 100;
+    currentRatio = p.ratio || '4:5';
+    currentSlide = 0;
+    historyStack = [JSON.parse(JSON.stringify(SLIDES))];
+    historyIndex = 0;
+    document.getElementById('fontSize').value = fontSize;
+    document.getElementById('fontSizeVal').textContent = fontSize + '%';
+    // update ratio btns
+    document.querySelectorAll('.ratio-btn').forEach(b => {
+      b.classList.toggle('active', b.textContent === currentRatio);
+    });
+    renderSlide();
+    closeModal('loadModal');
+    showToast('โหลดสำเร็จ!','success');
+  }
+}
+
+function deleteProject(name) {
+  if (!confirm(`ลบ "${name}" ใช่ไหม?`)) return;
+  const projects = JSON.parse(localStorage.getItem('yuiachiProjects') || '{}');
+  delete projects[name];
+  localStorage.setItem('yuiachiProjects', JSON.stringify(projects));
+  openLoadModal();
+  showToast('ลบสำเร็จ');
+}
+
+function closeModal(id) { document.getElementById(id).classList.remove('show'); }
+
+/* ════════════════════════════════════════
+   TOAST
+════════════════════════════════════════ */
+function showToast(msg, type='success') {
+  const t = document.createElement('div');
+  t.className = `toast ${type}`;
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 2500);
+}
+
+/* ════════════════════════════════════════
+   PWA
+════════════════════════════════════════ */
+function registerServiceWorker() {
+  if ('serviceWorker' in navigator) {
+    const code = `self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>e.waitUntil(clients.claim()));self.addEventListener('fetch',e=>e.respondWith(fetch(e.request).catch(()=>new Response('Offline'))));`;
+    const blob = new Blob([code],{type:'application/javascript'});
+    navigator.serviceWorker.register(URL.createObjectURL(blob)).catch(()=>{});
+  }
+}
+
+function setupInstallPrompt() {
+  window.addEventListener('beforeinstallprompt', e => {
+    e.preventDefault(); deferredPrompt = e;
+    document.getElementById('installPrompt').style.display = 'flex';
+  });
+}
+
+function installApp() {
+  if (deferredPrompt) {
+    deferredPrompt.prompt();
+    deferredPrompt.userChoice.then(() => {
+      deferredPrompt = null;
+      document.getElementById('installPrompt').style.display = 'none';
+    });
+  }
+}
+
+/* ════════════════════════════════════════
+   KEYBOARD SHORTCUTS
+════════════════════════════════════════ */
+document.addEventListener('keydown', e => {
+  if (e.ctrlKey || e.metaKey) {
+    if (e.key==='z') { e.preventDefault(); undo(); }
+    if (e.key==='y') { e.preventDefault(); redo(); }
+    if (e.key==='s') { e.preventDefault(); openSaveModal(); }
+    if (e.key==='ArrowRight') { e.preventDefault(); nextSlide(); }
+    if (e.key==='ArrowLeft')  { e.preventDefault(); previousSlide(); }
+  }
+});
+
+/* close modals on backdrop click */
+document.querySelectorAll('.modal').forEach(m => {
+  m.addEventListener('click', e => { if (e.target===m) m.classList.remove('show'); });
+});
+
+init();
+</script>
+</body>
+</html>
