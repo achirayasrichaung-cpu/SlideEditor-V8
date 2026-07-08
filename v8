@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Slide Editor Pro</title>
+  <style>
+    :root { --bg: #0c0f18; --surface: #141929; --accent: #c9a96e; --text: #e8e4dc; }
+    body { background: var(--bg); color: var(--text); font-family: sans-serif; padding: 20px; }
+    .container { max-width: 500px; margin: 0 auto; }
+    .card { background: var(--surface); padding: 20px; border-radius: 12px; margin-bottom: 20px; }
+    input, textarea { width: 100%; background: #1c2540; border: 1px solid #252e4a; color: white; padding: 10px; margin: 5px 0; border-radius: 6px; box-sizing: border-box; }
+    button { background: var(--accent); color: black; border: none; padding: 10px 20px; border-radius: 6px; font-weight: bold; cursor: pointer; width: 100%; margin-top: 10px; }
+    .slide-preview { width: 100%; aspect-ratio: 4/5; background: white; color: black; padding: 20px; display: flex; flex-direction: column; border-radius: 8px; }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <h2>Slide Editor Pro</h2>
+  
+  <!-- ส่วนนำเข้าเนื้อหา (ใช้ Copy จาก AI มาวางที่นี่) -->
+  <div class="card">
+    <label>วางเนื้อหา (ที่ได้จาก AI):</label>
+    <textarea id="aiInput" rows="6" placeholder="วางสคริปต์ที่ได้จาก ChatGPT/Gemini ที่นี่..."></textarea>
+    <button onclick="processText()">จัดรูปแบบเป็นสไลด์</button>
+  </div>
+
+  <!-- ส่วนแก้ไขสไลด์ -->
+  <div class="card">
+    <div id="slide-editor">
+      <input type="text" id="title" placeholder="หัวข้อ" oninput="updatePreview()">
+      <textarea id="bullets" rows="4" placeholder="เนื้อหา (ขึ้นบรรทัดใหม่คือ 1 Bullet)" oninput="updatePreview()"></textarea>
+    </div>
+  </div>
+
+  <!-- ตัวอย่าง -->
+  <div class="slide-preview" id="preview">
+    <h2 id="prevTitle">หัวข้อ</h2>
+    <div id="prevBullets"></div>
+  </div>
+</div>
+
+<script>
+  function processText() {
+    const text = document.getElementById('aiInput').value;
+    const lines = text.split('\n');
+    document.getElementById('title').value = lines[0] || "";
+    document.getElementById('bullets').value = lines.slice(1).join('\n');
+    updatePreview();
+  }
+
+  function updatePreview() {
+    document.getElementById('prevTitle').innerText = document.getElementById('title').value;
+    const bullets = document.getElementById('bullets').value.split('\n');
+    document.getElementById('prevBullets').innerHTML = bullets.map(b => `<li>${b}</li>`).join('');
+  }
+</script>
+
+</body>
+</html>
