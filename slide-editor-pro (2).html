@@ -1,0 +1,1430 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#0c0f18">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Slide Editor Pro">
+  <meta name="description" content="Slide Editor Pro — สร้าง carousel สไลด์สำหรับ TikTok / Instagram">
+  <title>Slide Editor Pro — @YUIACHI</title>
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:ital,wght@0,300;0,400;0,600;0,700;1,300&family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400;1,600&display=swap" rel="stylesheet">
+
+  <!-- CDN libs — integrity hashes ให้ browser verify ก่อนรัน -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"
+          integrity="sha512-BNaRQnYJYiPSqHHDb58B0yaPfCu+Wgds8Gp/gU33kqBtgNS4tSPHuGibyoeqMV/TJlSKda6FXzoEyYGjTe+vXA=="
+          crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"
+          integrity="sha512-XMVd28F1oH/O71fzwBnV7HucLxVwtxf26XV8P4wPk26EDxuGZ91N8bsOttmnomcCD3CS5ZMRL50H0GgOHvegtg=="
+          crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --bg: #0c0f18;
+      --surface: #141929;
+      --surface2: #1c2540;
+      --border: #252e4a;
+      --accent: #c9a96e;
+      --accent-dim: rgba(201,169,110,0.12);
+      --text: #e8e4dc;
+      --muted: #8892a4;
+      --danger: #e05c6a;
+      --success: #5cbf8a;
+      --info: #5b9cf6;
+    }
+
+    html, body { width:100%; height:100%; overflow:hidden; }
+
+    body {
+      font-family: 'Sarabun', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      display: flex;
+      flex-direction: column;
+      padding-top: max(10px, env(safe-area-inset-top));
+      padding-left: env(safe-area-inset-left);
+      padding-right: env(safe-area-inset-right);
+      padding-bottom: max(10px, env(safe-area-inset-bottom));
+    }
+
+    .container { flex:1; display:flex; flex-direction:column; overflow:hidden; padding: 0 10px; }
+
+    /* ── Header ── */
+    .header {
+      display:flex; align-items:center; justify-content:space-between;
+      padding: 8px 10px; margin-bottom:8px;
+      background:var(--surface); border:1px solid var(--border); border-radius:8px;
+      flex-shrink:0;
+    }
+    .header-left { display:flex; align-items:center; gap:8px; }
+    .brand-mark {
+      width:26px; height:26px; background:var(--accent);
+      border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:12px;
+    }
+    .brand-info h1 { font-family:'Cormorant Garamond',serif; font-size:13px; font-weight:600; color:var(--accent); }
+    .brand-info p { font-size:8px; color:var(--muted); letter-spacing:0.1em; }
+    .header-right { display:flex; gap:3px; }
+
+    .icon-btn {
+      width:26px; height:26px; border:1px solid var(--border);
+      background:var(--surface2); color:var(--muted); border-radius:5px;
+      cursor:pointer; font-size:11px; transition:all 0.2s;
+      display:flex; align-items:center; justify-content:center;
+      user-select:none; -webkit-user-select:none;
+    }
+    .icon-btn:active { border-color:var(--accent); color:var(--accent); }
+    .icon-btn:disabled { opacity:0.3; cursor:default; }
+
+    /* ── Tabs ── */
+    .tabs {
+      display:flex; gap:2px; margin-bottom:8px;
+      background:var(--surface); border:1px solid var(--border);
+      padding:3px; border-radius:8px; overflow-x:auto; flex-shrink:0;
+      scrollbar-width:none;
+    }
+    .tabs::-webkit-scrollbar { display:none; }
+    .tab-btn {
+      flex:0 0 auto; padding:6px 9px; border:none; background:transparent;
+      color:var(--muted); font-size:10px; font-weight:600; cursor:pointer;
+      border-radius:5px; transition:all 0.2s; font-family:'Sarabun',sans-serif;
+      letter-spacing:0.02em; white-space:nowrap; user-select:none;
+    }
+    .tab-btn.active { background:var(--accent); color:#0c0f18; }
+
+    .tab-content { display:none; overflow-y:auto; flex:1; }
+    .tab-content.active { display:flex; flex-direction:column; }
+
+    /* ── Ratio Bar ── */
+    .ratio-bar { display:flex; gap:3px; margin-bottom:8px; flex-shrink:0; }
+    .ratio-btn {
+      flex:1; padding:5px 4px; border:1px solid var(--border);
+      background:var(--surface2); color:var(--muted); border-radius:5px;
+      cursor:pointer; font-size:9px; font-weight:700;
+      font-family:'Sarabun',sans-serif; transition:all 0.2s;
+      text-align:center; user-select:none;
+    }
+    .ratio-btn.active { border-color:var(--accent); color:var(--accent); background:var(--accent-dim); }
+
+    /* ── Slide Preview ── */
+    .slide-preview-wrap {
+      display:flex; flex-direction:column; align-items:center;
+      background:var(--surface); border:1px solid var(--border);
+      border-radius:8px; padding:10px; flex:1; overflow-y:auto;
+    }
+
+    .slide {
+      border-radius:10px; padding:18px 16px 12px;
+      display:flex; flex-direction:column; position:relative;
+      overflow:hidden; box-shadow:0 10px 30px rgba(0,0,0,0.45);
+      flex-shrink:0; transition:all 0.3s;
+    }
+    .slide[data-ratio="9:16"] { width:160px; aspect-ratio:9/16; }
+    .slide[data-ratio="4:5"]  { width:200px; aspect-ratio:4/5; max-width:100%; }
+    .slide[data-ratio="1:1"]  { width:220px; aspect-ratio:1/1; max-width:100%; }
+    .slide[data-ratio="3:4"]  { width:180px; aspect-ratio:3/4; }
+
+    .slide-top { flex:0 0 auto; }
+    .slide-mid { flex:1; display:flex; flex-direction:column; justify-content:center; }
+    .slide-bot { flex:0 0 auto; }
+
+    .slide-eyebrow { font-size:7px; font-weight:700; letter-spacing:0.15em; text-transform:uppercase; opacity:0.55; margin-bottom:5px; }
+    .slide-title { font-family:'Cormorant Garamond',serif; font-size:20px; font-weight:700; line-height:1.15; margin-bottom:6px; letter-spacing:-0.01em; }
+    .slide-subtitle { font-size:9px; line-height:1.4; opacity:0.85; margin-bottom:10px; font-style:normal; }
+    .slide-divider { width:28px; height:2px; margin-bottom:12px; border-radius:2px; opacity:0.45; }
+    .slide-body { font-size:10.5px; line-height:1.7; font-weight:400; }
+    .slide-bullet { display:flex; align-items:flex-start; gap:8px; margin-bottom:8px; }
+    .bullet-mark { width:3.5px; height:3.5px; border-radius:50%; margin-top:7px; flex-shrink:0; opacity:0.8; }
+    .slide-footer {
+      display:flex; align-items:center; justify-content:space-between;
+      margin-top:8px; padding-top:6px; border-top:1px solid; border-color:inherit;
+      font-size:7px; opacity:0.35;
+    }
+
+    /* ── Dots ── */
+    .dots { display:flex; justify-content:center; flex-wrap:wrap; gap:3px; margin-top:8px; }
+    .dot { width:4px; height:4px; border-radius:50%; background:var(--border); cursor:pointer; transition:all 0.25s; }
+    .dot.active { background:var(--accent); width:14px; border-radius:2px; }
+
+    /* ── Buttons ── */
+    .btn-row { display:flex; gap:4px; margin-bottom:8px; flex-shrink:0; }
+    .btn {
+      flex:1; padding:8px; border:none; background:var(--accent); color:#0c0f18;
+      border-radius:6px; font-size:11px; font-weight:700; cursor:pointer;
+      font-family:'Sarabun',sans-serif; transition:all 0.2s; user-select:none;
+    }
+    .btn:active { opacity:0.8; transform:scale(0.98); }
+    .btn:disabled { opacity:0.35; cursor:default; }
+    .btn-ghost { background:var(--surface2); color:var(--text); border:1px solid var(--border); font-weight:600; }
+    .btn-full { width:100%; display:block; flex:unset; }
+    .btn-danger { background:var(--danger); color:#fff; }
+    .btn-info { background:var(--info); color:#0c0f18; }
+
+    /* ── Section label ── */
+    .section-label {
+      font-size:8px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase;
+      color:var(--muted); margin-bottom:6px; display:flex; align-items:center; gap:5px; flex-shrink:0;
+    }
+    .section-label::after { content:''; flex:1; height:1px; background:var(--border); }
+
+    /* ── Input ── */
+    .input-group { margin-bottom:8px; }
+    .input-label { font-size:9px; font-weight:600; margin-bottom:3px; display:block; color:var(--muted); }
+    .input-field {
+      width:100%; padding:7px 9px;
+      background:var(--surface); border:1px solid var(--border);
+      border-radius:6px; color:var(--text); font-size:11px;
+      font-family:'Sarabun',sans-serif; transition:border-color 0.2s; margin-bottom:3px;
+    }
+    .input-field:last-child { margin-bottom:0; }
+    .input-field:focus { outline:none; border-color:var(--accent); background:var(--surface2); }
+    textarea.input-field { resize:vertical; min-height:52px; }
+    select.input-field { cursor:pointer; }
+
+    /* ── AI / Paste Box ── */
+    .ai-box {
+      background:var(--accent-dim); border:1px solid rgba(201,169,110,0.25);
+      border-radius:8px; padding:10px; margin-bottom:10px; flex-shrink:0;
+    }
+    .ai-box .input-label { color:var(--accent); font-size:10px; }
+
+    /* ── Slide Count Chips ── */
+    .count-chips { display:flex; gap:3px; flex-wrap:wrap; margin-bottom:6px; }
+    .count-chip {
+      padding:4px 9px; border:1px solid var(--border); background:var(--surface2);
+      color:var(--muted); border-radius:4px; font-size:9px; font-weight:700;
+      cursor:pointer; transition:all 0.2s; font-family:'Sarabun',sans-serif; user-select:none;
+    }
+    .count-chip.active { border-color:var(--accent); color:var(--accent); background:var(--accent-dim); }
+    .count-chip-input {
+      width:46px; padding:4px 6px; border:1px solid var(--border); background:var(--surface2);
+      color:var(--text); border-radius:4px; font-size:9px; font-weight:700;
+      font-family:'Sarabun',sans-serif; text-align:center;
+    }
+    .count-chip-input:focus { outline:none; border-color:var(--accent); }
+
+    /* ── Caption ── */
+    .caption-output {
+      background:var(--surface2); border:1px solid var(--border);
+      border-radius:6px; padding:10px; font-size:11px; line-height:1.75;
+      white-space:pre-wrap; min-height:80px; position:relative;
+    }
+    .caption-output.empty { color:var(--muted); font-style:italic; }
+    .copy-btn {
+      position:absolute; top:6px; right:6px;
+      background:var(--surface); border:1px solid var(--border);
+      color:var(--muted); font-size:9px; padding:3px 7px; border-radius:4px;
+      cursor:pointer; transition:all 0.2s;
+    }
+    .copy-btn:active { color:var(--accent); border-color:var(--accent); }
+
+    /* ── Themes ── */
+    .theme-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:4px; margin-bottom:10px; }
+    .theme-btn {
+      padding:10px 8px; border:2px solid transparent; border-radius:6px;
+      cursor:pointer; font-family:'Cormorant Garamond',serif; font-size:13px;
+      letter-spacing:0.04em; transition:all 0.2s; user-select:none;
+    }
+    .theme-btn .theme-name { font-size:8px; font-family:'Sarabun',sans-serif; font-weight:700; margin-top:2px; opacity:0.5; }
+    .theme-btn.active { border-color:var(--accent); box-shadow:0 0 0 2px var(--accent-dim); }
+
+    /* ── Slider ── */
+    .slider-row { display:flex; align-items:center; gap:6px; margin-bottom:8px; }
+    .slider { flex:1; height:2px; border-radius:2px; background:var(--border); outline:none; -webkit-appearance:none; }
+    .slider::-webkit-slider-thumb { -webkit-appearance:none; width:12px; height:12px; border-radius:50%; background:var(--accent); cursor:pointer; border:2px solid var(--bg); }
+    .slider-val { font-size:9px; color:var(--accent); font-weight:700; min-width:28px; text-align:right; }
+
+    /* ── Loading ── */
+    .loading { display:none; text-align:center; padding:10px; }
+    .loading.show { display:block; }
+    .spinner { display:inline-block; width:16px; height:16px; border:2px solid var(--border); border-top-color:var(--accent); border-radius:50%; animation:spin 0.7s linear infinite; margin-bottom:5px; }
+    @keyframes spin { to { transform:rotate(360deg); } }
+    .loading-text { font-size:10px; color:var(--muted); }
+
+    /* ── Toast ── */
+    .toast {
+      position:fixed; bottom:max(16px,env(safe-area-inset-bottom)); left:50%;
+      transform:translateX(-50%); background:var(--surface2);
+      border:1px solid var(--border); color:var(--text);
+      padding:8px 14px; border-radius:16px; font-size:10px;
+      z-index:9999; white-space:nowrap; animation:toastIn 0.2s ease; pointer-events:none;
+    }
+    .toast.success { border-color:var(--success); color:var(--success); }
+    .toast.error   { border-color:var(--danger);  color:var(--danger);  }
+    .toast.info    { border-color:var(--info);    color:var(--info);    }
+    @keyframes toastIn {
+      from { opacity:0; transform:translateX(-50%) translateY(8px); }
+      to   { opacity:1; transform:translateX(-50%) translateY(0); }
+    }
+
+    /* ── Slide List ── */
+    .slide-list { display:flex; flex-direction:column; gap:4px; margin-bottom:8px; max-height:260px; overflow-y:auto; }
+    .slide-list-item {
+      display:flex; align-items:center; gap:6px; padding:7px 8px;
+      background:var(--surface); border:1px solid var(--border);
+      border-radius:6px; cursor:pointer; transition:all 0.2s; font-size:10px; user-select:none;
+    }
+    .slide-list-item.active { border-color:var(--accent); background:var(--accent-dim); }
+    .slide-list-item.dragging { opacity:0.4; }
+    .slide-list-item.drag-over { border-color:var(--info); background:rgba(91,156,246,0.08); }
+    .drag-handle { color:var(--muted); font-size:10px; cursor:grab; padding:0 2px; }
+    .drag-handle:active { cursor:grabbing; }
+    .slide-list-num { font-size:8px; color:var(--muted); min-width:14px; text-align:center; }
+    .slide-list-title { flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+
+    /* ── Modal ── */
+    .modal {
+      display:none; position:fixed; top:0; left:0; right:0; bottom:0;
+      background:rgba(0,0,0,0.65); z-index:10000;
+      align-items:center; justify-content:center; padding:12px;
+    }
+    .modal.show { display:flex; }
+    .modal-content {
+      background:var(--surface); border:1px solid var(--border);
+      border-radius:10px; padding:14px; max-width:100%; width:100%;
+      max-height:80vh; overflow-y:auto;
+    }
+    .modal-title { font-size:13px; font-weight:700; margin-bottom:10px; color:var(--accent); }
+    .modal-input {
+      width:100%; padding:8px 9px; background:var(--surface2);
+      border:1px solid var(--border); border-radius:6px;
+      color:var(--text); font-size:11px; font-family:'Sarabun',sans-serif; margin-bottom:10px;
+    }
+    .modal-input:focus { outline:none; border-color:var(--accent); }
+    .modal-buttons { display:flex; gap:6px; }
+    .modal-buttons .btn { flex:1; }
+
+    /* ── Progress bar ── */
+    .progress-bar { width:100%; height:3px; background:var(--border); border-radius:2px; margin-top:6px; overflow:hidden; display:none; }
+    .progress-bar.show { display:block; }
+    .progress-fill { height:100%; background:var(--accent); border-radius:2px; transition:width 0.3s; }
+
+    /* ── Install prompt ── */
+    .install-prompt {
+      position:fixed; bottom:max(16px,env(safe-area-inset-bottom)); left:50%;
+      transform:translateX(-50%); background:var(--accent); color:#0c0f18;
+      padding:10px 14px; border-radius:8px; font-size:11px; font-weight:700;
+      z-index:9998; display:flex; gap:8px; align-items:center; animation:toastIn 0.3s ease;
+    }
+    .install-prompt button {
+      background:#0c0f18; color:var(--accent); border:none;
+      padding:5px 10px; border-radius:4px; font-weight:700; cursor:pointer; font-size:9px;
+    }
+
+    /* ── Scrollbar ── */
+    ::-webkit-scrollbar { width:3px; height:3px; }
+    ::-webkit-scrollbar-track { background:transparent; }
+    ::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
+  </style>
+</head>
+<body>
+<div class="container">
+
+  <!-- Header -->
+  <div class="header">
+    <div class="header-left">
+      <div class="brand-mark">✦</div>
+      <div class="brand-info">
+        <h1>Slide Editor</h1>
+        <p>PRO · @YUIACHI</p>
+      </div>
+    </div>
+    <div class="header-right">
+      <button class="icon-btn" onclick="undo()" id="undoBtn" disabled title="Undo (Ctrl+Z)">↶</button>
+      <button class="icon-btn" onclick="redo()" id="redoBtn" disabled title="Redo (Ctrl+Y)">↷</button>
+      <button class="icon-btn" onclick="openSaveModal()" title="Save (Ctrl+S)">💾</button>
+      <button class="icon-btn" onclick="openLoadModal()" title="Load">📂</button>
+    </div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <button class="tab-btn active" onclick="switchTab('preview',this)">ตัวอย่าง</button>
+    <button class="tab-btn"        onclick="switchTab('editor',this)">แก้ไข</button>
+    <button class="tab-btn"        onclick="switchTab('manage',this)">สไลด์</button>
+    <button class="tab-btn"        onclick="switchTab('caption',this)">Caption</button>
+    <button class="tab-btn"        onclick="switchTab('theme',this)">Theme</button>
+    <button class="tab-btn"        onclick="switchTab('settings',this)">ตั้งค่า</button>
+  </div>
+
+  <!-- ══════════ TAB: Preview ══════════ -->
+  <div id="preview" class="tab-content active">
+    <div class="ratio-bar">
+      <button class="ratio-btn" onclick="setRatio('9:16',this)">9:16</button>
+      <button class="ratio-btn active" onclick="setRatio('4:5',this)">4:5</button>
+      <button class="ratio-btn" onclick="setRatio('1:1',this)">1:1</button>
+      <button class="ratio-btn" onclick="setRatio('3:4',this)">3:4</button>
+    </div>
+    <div class="slide-preview-wrap">
+      <div id="slideCanvas" class="slide" data-ratio="4:5"></div>
+      <div class="dots" id="dots"></div>
+    </div>
+    <div class="btn-row" style="margin-top:8px;">
+      <button class="btn btn-ghost" onclick="previousSlide()">← ก่อน</button>
+      <button class="btn btn-ghost" onclick="nextSlide()">ถัดไป →</button>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-ghost" onclick="exportSlide()">📥 PNG</button>
+      <button class="btn btn-ghost" onclick="exportAllSlides()">📦 ZIP ทั้งหมด</button>
+    </div>
+    <div class="progress-bar" id="zipProgress"><div class="progress-fill" id="zipFill" style="width:0%"></div></div>
+  </div>
+
+  <!-- ══════════ TAB: Editor ══════════ -->
+  <div id="editor" class="tab-content">
+
+    <!-- ── Paste & Auto-split box ── -->
+    <div class="ai-box">
+      <div class="input-label">📋 วางเนื้อหา → จัดสไลด์อัตโนมัติ</div>
+      <textarea id="pasteInput" class="input-field" rows="5"
+        placeholder="วางเนื้อหาของคุณที่นี่...&#10;&#10;ระบบจะแบ่งเป็นสไลด์ตามจำนวนที่เลือกด้านล่างโดยอัตโนมัติ&#10;รองรับ Markdown: # หัวข้อ, - bullet, **bold**"></textarea>
+
+      <!-- Slide count selector -->
+      <div style="margin:6px 0 8px;">
+        <div class="input-label" style="margin-bottom:4px;">จำนวนสไลด์ที่ต้องการ</div>
+        <div class="count-chips" id="countChips">
+          <button class="count-chip" onclick="selectCount(3,this)">3</button>
+          <button class="count-chip" onclick="selectCount(5,this)">5</button>
+          <button class="count-chip active" onclick="selectCount(7,this)">7</button>
+          <button class="count-chip" onclick="selectCount(9,this)">9</button>
+          <button class="count-chip" onclick="selectCount(12,this)">12</button>
+          <button class="count-chip" onclick="selectCount(15,this)">15</button>
+          <input type="number" id="customCountInput" class="count-chip-input"
+            min="1" max="50" placeholder="กำหนด"
+            title="พิมพ์จำนวนเอง 1–50"
+            oninput="onCustomCount(this)">
+        </div>
+        <div style="font-size:8px;color:var(--muted);margin-top:3px;">
+          เลือก หรือพิมพ์ตัวเลขในช่องขวาสุด · ตอนนี้: <span id="countLabel" style="color:var(--accent);font-weight:700;">7 สไลด์</span>
+        </div>
+      </div>
+
+      <button class="btn btn-full" id="autoSplitBtn" onclick="autoSplitContent()">🪄 จัดสไลด์อัตโนมัติ</button>
+    </div>
+
+    <!-- ── Import JSON from Claude ── -->
+    <div class="ai-box" style="margin-bottom:10px;">
+      <div class="input-label">🤖 Import JSON จาก Claude / ChatGPT</div>
+      <div style="font-size:8px;color:var(--muted);margin-bottom:6px;line-height:1.6;">
+        Copy prompt → วางใน Claude → Copy JSON ที่ได้ → วางด้านล่าง → Apply
+      </div>
+      <div style="display:flex;gap:3px;margin-bottom:6px;">
+        <button class="ratio-btn" onclick="setSlideCount(5,this)">5</button>
+        <button class="ratio-btn active" onclick="setSlideCount(7,this)" id="claudeCountBtn7">7</button>
+        <button class="ratio-btn" onclick="setSlideCount(9,this)">9</button>
+        <button class="ratio-btn" onclick="setSlideCount(12,this)">12</button>
+      </div>
+      <button class="btn btn-ghost btn-full" onclick="copyPrompt()" style="font-size:10px;margin-bottom:6px;">📋 Copy Prompt ไปใช้ใน Claude</button>
+      <textarea id="jsonImport" class="input-field" rows="3"
+        placeholder='[{"tag":"COVER","title":"...","subtitle":"...","b1":"...","b2":"","b3":"","b4":"","b5":""}]'></textarea>
+      <button class="btn btn-full" onclick="importJSON()" style="margin-top:4px;">✦ Apply สไลด์</button>
+    </div>
+
+    <!-- ── Manual edit ── -->
+    <div class="section-label">แก้ไขสไลด์ที่ <span id="slideNumLabel" style="color:var(--accent);">1</span></div>
+    <div class="input-group">
+      <label class="input-label">Tag (ป้ายบน)</label>
+      <input type="text" id="editTag" class="input-field" placeholder="COVER, TIP 1, CTA..." oninput="liveUpdate()">
+    </div>
+    <div class="input-group">
+      <label class="input-label">Title (หัวข้อหลัก)</label>
+      <input type="text" id="editTitle" class="input-field" placeholder="หัวข้อที่ดึงดูด" oninput="liveUpdate()">
+    </div>
+    <div class="input-group">
+      <label class="input-label">Subtitle (ประโยคเสริม)</label>
+      <input type="text" id="editSubtitle" class="input-field" placeholder="อธิบายสั้นๆ หรือ hook..." oninput="liveUpdate()">
+    </div>
+    <div class="input-group">
+      <label class="input-label">Bullets (เนื้อหา)</label>
+      <input type="text" id="editB1" class="input-field" placeholder="ประเด็นที่ 1" oninput="liveUpdate()">
+      <input type="text" id="editB2" class="input-field" placeholder="ประเด็นที่ 2" oninput="liveUpdate()">
+      <input type="text" id="editB3" class="input-field" placeholder="ประเด็นที่ 3" oninput="liveUpdate()">
+      <input type="text" id="editB4" class="input-field" placeholder="ประเด็นที่ 4" oninput="liveUpdate()">
+      <input type="text" id="editB5" class="input-field" placeholder="ประเด็นที่ 5" oninput="liveUpdate()">
+    </div>
+  </div>
+
+  <!-- ══════════ TAB: Manage ══════════ -->
+  <div id="manage" class="tab-content">
+    <div class="section-label">จัดการสไลด์ (ลากเพื่อเรียงลำดับ)</div>
+    <div class="slide-list" id="slideList"></div>
+    <div class="btn-row">
+      <button class="btn btn-ghost" onclick="addSlide()">＋ เพิ่ม</button>
+      <button class="btn btn-ghost" onclick="duplicateSlide()">⧉ คัดลอก</button>
+      <button class="btn btn-danger" onclick="deleteSlide()">✕ ลบ</button>
+    </div>
+  </div>
+
+  <!-- ══════════ TAB: Caption ══════════ -->
+  <div id="caption" class="tab-content">
+    <div class="ai-box">
+      <div class="input-label">✦ Caption + Hashtag</div>
+      <div style="font-size:9px;color:var(--muted);margin-bottom:8px;line-height:1.6;">
+        1. กด Copy Prompt → วางใน Claude<br>
+        2. Claude จะเขียน caption ให้ตามสไลด์ที่มี<br>
+        3. Copy มาวางในช่องด้านล่าง
+      </div>
+      <div class="input-group">
+        <label class="input-label">Platform</label>
+        <select id="captionPlatform" class="input-field">
+          <option value="tiktok">TikTok</option>
+          <option value="instagram">Instagram</option>
+          <option value="both">TikTok + Instagram</option>
+        </select>
+      </div>
+      <div class="input-group">
+        <label class="input-label">สไตล์</label>
+        <select id="captionStyle" class="input-field">
+          <option value="casual">Casual (เป็นกันเอง)</option>
+          <option value="hook">Hook-first (ดึงดูดทันที)</option>
+        </select>
+      </div>
+      <button class="btn btn-full" onclick="copyCaptionPrompt()">📋 Copy Prompt ไปใช้ใน Claude</button>
+    </div>
+    <div class="section-label">Caption</div>
+    <textarea class="input-field" id="captionOutput" rows="5" placeholder="วาง caption ที่ได้จาก Claude ตรงนี้..."></textarea>
+    <div class="section-label">Hashtags</div>
+    <textarea class="input-field" id="hashtagOutput" rows="3" placeholder="วาง hashtag ตรงนี้..."></textarea>
+    <div class="btn-row">
+      <button class="btn btn-ghost" onclick="copyText('captionOutput')">📋 Copy Caption</button>
+      <button class="btn btn-ghost" onclick="copyText('hashtagOutput')">📋 Copy Hashtag</button>
+    </div>
+  </div>
+
+  <!-- ══════════ TAB: Theme ══════════ -->
+  <div id="theme" class="tab-content">
+    <div class="section-label">Theme</div>
+    <div class="theme-grid" id="themeGrid"></div>
+  </div>
+
+  <!-- ══════════ TAB: Settings ══════════ -->
+  <div id="settings" class="tab-content">
+    <div class="section-label">ทั่วไป</div>
+    <div class="input-group">
+      <label class="input-label">Watermark</label>
+      <input type="text" id="watermark" class="input-field" value="@YUIACHI" oninput="renderSlide()">
+    </div>
+    <div style="margin-bottom:10px;">
+      <div class="input-label">Font Size</div>
+      <div class="slider-row">
+        <input type="range" class="slider" id="fontSize" min="70" max="140" value="100" oninput="updateFontSize()">
+        <div class="slider-val" id="fontSizeVal">100%</div>
+      </div>
+    </div>
+    <div class="section-label">Export</div>
+    <div class="input-group">
+      <label class="input-label">ชื่อไฟล์ prefix</label>
+      <input type="text" id="exportPrefix" class="input-field" value="yuiachi" placeholder="yuiachi">
+    </div>
+    <div class="btn-row" style="margin-top:4px;">
+      <button class="btn btn-ghost" onclick="resetAll()">↺ รีเซ็ตทั้งหมด</button>
+    </div>
+  </div>
+
+</div><!-- /container -->
+
+<!-- Save Modal -->
+<div class="modal" id="saveModal">
+  <div class="modal-content">
+    <div class="modal-title">💾 บันทึกโปรเจกต์</div>
+    <input type="text" class="modal-input" id="projectName" placeholder="ชื่อโปรเจกต์">
+    <div class="modal-buttons">
+      <button class="btn" onclick="saveProject()">บันทึก</button>
+      <button class="btn btn-ghost" onclick="closeModal('saveModal')">ยกเลิก</button>
+    </div>
+  </div>
+</div>
+
+<!-- Load Modal -->
+<div class="modal" id="loadModal">
+  <div class="modal-content">
+    <div class="modal-title">📂 โหลดโปรเจกต์</div>
+    <div id="projectList" style="margin-bottom:10px;"></div>
+    <div class="modal-buttons">
+      <button class="btn btn-ghost btn-full" onclick="closeModal('loadModal')">ปิด</button>
+    </div>
+  </div>
+</div>
+
+<!-- Install prompt (PWA) -->
+<div class="install-prompt" id="installPrompt" style="display:none;">
+  <span>Add to Home Screen</span>
+  <button onclick="installApp()">Install</button>
+  <button onclick="document.getElementById('installPrompt').style.display='none'" style="background:transparent;color:#0c0f18;padding:5px;">✕</button>
+</div>
+
+<script>
+/* ════════════════════════════════════════
+   THEMES
+════════════════════════════════════════ */
+const THEMES = {
+  ivory:    { label:'Ivory',    bg:'#FDFBF7', text:'#1c1a17', accent:'#c08b3c', bullet:'#c08b3c' },
+  noir:     { label:'Noir',     bg:'#0f0e0c', text:'#e8dfd0', accent:'#c9a96e', bullet:'#c9a96e' },
+  rose:     { label:'Rose',     bg:'#f5ede9', text:'#3b1a13', accent:'#b25c4a', bullet:'#b25c4a' },
+  sage:     { label:'Sage',     bg:'#f0f4f0', text:'#1e2e1e', accent:'#4a7c5e', bullet:'#4a7c5e' },
+  lavender: { label:'Lavender', bg:'#f2eff9', text:'#2a1d4a', accent:'#7c5cbf', bullet:'#7c5cbf' },
+  ocean:    { label:'Ocean',    bg:'#e9f3f8', text:'#0d2535', accent:'#1b6fa8', bullet:'#1b6fa8' },
+  charcoal: { label:'Charcoal', bg:'#1e2028', text:'#d8d5cc', accent:'#e0b878', bullet:'#e0b878' },
+  peach:    { label:'Peach',    bg:'#fff4ef', text:'#3a1808', accent:'#e0703a', bullet:'#e0703a' },
+  matcha:   { label:'Matcha',   bg:'#f3f7f1', text:'#1a2b1a', accent:'#6b9a5c', bullet:'#6b9a5c' },
+  slate:    { label:'Slate',    bg:'#1a1f2e', text:'#ccd6f6', accent:'#8892a4', bullet:'#8892a4' },
+};
+
+/* ════════════════════════════════════════
+   STATE
+════════════════════════════════════════ */
+let SLIDES = [
+  { tag:'COVER', title:'5 นิสัยดีที่เปลี่ยนผิว', subtitle:'เริ่มต้นวันนี้ ผิวดีขึ้นใน 21 วัน', b1:'', b2:'', b3:'', b4:'', b5:'' },
+  { tag:'TIP 1', title:'ล้างหน้าสม่ำเสมอ', subtitle:'พื้นฐานที่หลายคนมองข้าม', b1:'ล้างหน้า 2 ครั้ง/วัน', b2:'เช้า–เย็น', b3:'ผิวใสไม่อุดตัน', b4:'ใช้ cleanser อ่อนโยน', b5:'' },
+  { tag:'TIP 2', title:'ครีมกันแดด SPF50+', subtitle:'ป้องกัน UVA/UVB ทุกวัน', b1:'ทาหลัง moisturizer', b2:'Reapply ทุก 2–3 ชม.', b3:'ลด dark spot', b4:'ชะลอริ้วรอย', b5:'' },
+  { tag:'TIP 3', title:'นอนหลับ 7–8 ชั่วโมง', subtitle:'ผิวซ่อมแซมขณะหลับ', b1:'ลด puffy eyes', b2:'สีผิวกระจ่าง', b3:'ลด cortisol', b4:'ผิวเรียบเนียน', b5:'' },
+  { tag:'TIP 4', title:'ดื่มน้ำ 2 ลิตร/วัน', subtitle:'Hydration จากภายใน', b1:'ผิวชุ่มชื้น', b2:'ขับสารพิษ', b3:'ลดริ้วรอย', b4:'น้ำมันผิวสมดุล', b5:'' },
+  { tag:'TIP 5', title:'Moisturizer เช้า–เย็น', subtitle:'กักเก็บความชุ่มชื้น', b1:'เสริม skin barrier', b2:'ผิวเด้งไม่แห้ง', b3:'ทาขณะผิวยังชื้น', b4:'เลือกตามสภาพผิว', b5:'' },
+  { tag:'CTA',   title:'เริ่มวันนี้เลย', subtitle:'ทำได้ทุกคน ไม่ต้องแพง', b1:'เลือก 1 นิสัย', b2:'ทำ 21 วันติดต่อกัน', b3:'Share ให้เพื่อนด้วย', b4:'Follow @YUIACHI', b5:'' },
+];
+
+let currentSlide  = 0;
+let currentTheme  = 'ivory';
+let currentRatio  = '4:5';
+let fontSize      = 100;
+let historyStack  = [JSON.parse(JSON.stringify(SLIDES))];
+let historyIndex  = 0;
+let deferredPrompt = null;
+let dragSrcIndex  = null;
+let selectedCount = 7;   // จำนวนสไลด์ที่เลือกสำหรับ auto-split
+let claudeCount   = 7;   // จำนวนสำหรับ Claude prompt
+
+/* ════════════════════════════════════════
+   INIT
+════════════════════════════════════════ */
+function init() {
+  buildThemeGrid();
+  renderSlide();
+  buildSlideList();
+  setupInstallPrompt();
+  // close modals on backdrop click
+  document.querySelectorAll('.modal').forEach(m => {
+    m.addEventListener('click', e => { if (e.target === m) m.classList.remove('show'); });
+  });
+}
+
+/* ════════════════════════════════════════
+   SLIDE COUNT SELECTOR (Auto-split)
+════════════════════════════════════════ */
+function selectCount(n, btn) {
+  selectedCount = n;
+  document.querySelectorAll('#countChips .count-chip').forEach(c => c.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  document.getElementById('customCountInput').value = '';
+  updateCountLabel();
+}
+
+function onCustomCount(input) {
+  const v = parseInt(input.value);
+  if (v >= 1 && v <= 50) {
+    selectedCount = v;
+    document.querySelectorAll('#countChips .count-chip').forEach(c => c.classList.remove('active'));
+    updateCountLabel();
+  }
+}
+
+function updateCountLabel() {
+  const el = document.getElementById('countLabel');
+  if (el) el.textContent = selectedCount + ' สไลด์';
+}
+
+/* ════════════════════════════════════════
+   AUTO-SPLIT CONTENT → SLIDES
+════════════════════════════════════════ */
+function autoSplitContent() {
+  const raw = document.getElementById('pasteInput').value.trim();
+  if (!raw) { showToast('กรุณาวางเนื้อหาก่อน', 'error'); return; }
+
+  const generated = parseContentToSlides(raw, selectedCount);
+  if (!generated.length) { showToast('ไม่พบเนื้อหา', 'error'); return; }
+
+  SLIDES = generated;
+  currentSlide = 0;
+  saveHistory();
+  renderSlide();
+  buildSlideList();
+  switchTab('preview', document.querySelector('.tab-btn'));
+  showToast('จัดแล้ว ' + SLIDES.length + ' สไลด์ ✓', 'success');
+}
+
+/**
+ * แบ่งเนื้อหาเป็น targetCount สไลด์
+ * ลำดับความสำคัญ:
+ *  1. แยกด้วยบรรทัดว่าง (paragraph blocks)
+ *  2. ถ้า blocks มากกว่า target → รวม
+ *  3. ถ้า blocks น้อยกว่า target → แตกด้วยบรรทัด
+ *  4. แปลงแต่ละ block → slide object
+ */
+function parseContentToSlides(raw, target) {
+  // แยก paragraph blocks
+  let blocks = raw.split(/\n{2,}/).map(b => b.trim()).filter(Boolean);
+
+  if (blocks.length === 0) return [];
+
+  let finalBlocks;
+
+  if (blocks.length >= target) {
+    // รวมบล็อกให้ได้ target
+    finalBlocks = [];
+    const ratio = blocks.length / target;
+    for (let i = 0; i < target; i++) {
+      const s = Math.round(i * ratio);
+      const e = Math.round((i + 1) * ratio);
+      finalBlocks.push(blocks.slice(s, e).join('\n\n'));
+    }
+  } else {
+    // แตกเป็นบรรทัด
+    const lines = raw.split('\n').map(l => l.trim()).filter(Boolean);
+    if (lines.length >= target) {
+      finalBlocks = [];
+      const ratio = lines.length / target;
+      for (let i = 0; i < target; i++) {
+        const s = Math.round(i * ratio);
+        const e = Math.round((i + 1) * ratio);
+        finalBlocks.push(lines.slice(s, e).join('\n'));
+      }
+    } else {
+      // เนื้อหาน้อยกว่า target → ใช้เท่าที่มี + เติมว่าง
+      finalBlocks = [...lines];
+      while (finalBlocks.length < target) finalBlocks.push('');
+    }
+  }
+
+  return finalBlocks.map((block, idx) => blockToSlide(block, idx, finalBlocks.length));
+}
+
+function blockToSlide(block, idx, total) {
+  const isFirst = idx === 0;
+  const isLast  = idx === total - 1;
+  const lines   = block.split('\n').map(l => l.trim()).filter(Boolean);
+
+  let tag      = isFirst ? 'COVER' : isLast ? 'CTA' : 'TIP ' + idx;
+  let title    = '';
+  let subtitle = '';
+  let bullets  = [];
+
+  if (!lines.length) {
+    return { tag, title: isFirst ? 'หัวข้อหลัก' : isLast ? 'สรุป' : 'สไลด์ ' + (idx + 1), subtitle, b1:'', b2:'', b3:'', b4:'', b5:'' };
+  }
+
+  // บรรทัดแรก → title (ลบ Markdown prefix)
+  let t0 = lines[0];
+  if (/^#{1,3}\s/.test(t0)) {
+    t0 = t0.replace(/^#{1,3}\s+/, '');
+    if (!isFirst && !isLast) tag = 'PART ' + idx;
+  }
+  t0 = t0.replace(/^\*\*(.+)\*\*$/, '$1').replace(/^__(.+)__$/, '$1');
+  title = t0;
+
+  // บรรทัดที่ 2 ถ้าไม่ใช่ bullet → subtitle
+  let startBullet = 1;
+  if (lines.length > 1 && !/^[-•*▪▸►→✓✔\d]/.test(lines[1])) {
+    subtitle = lines[1].replace(/^\*\*(.+)\*\*$/, '$1');
+    startBullet = 2;
+  }
+
+  // ที่เหลือ → bullets (สูงสุด 5)
+  for (let i = startBullet; i < lines.length && bullets.length < 5; i++) {
+    const b = lines[i]
+      .replace(/^[-•*▪▸►→✓✔]\s*/, '')
+      .replace(/^\d+\.\s*/, '')
+      .replace(/^\*\*(.+)\*\*$/, '$1')
+      .trim();
+    if (b) bullets.push(b);
+  }
+
+  return {
+    tag, title, subtitle,
+    b1: bullets[0] || '', b2: bullets[1] || '',
+    b3: bullets[2] || '', b4: bullets[3] || '', b5: bullets[4] || '',
+  };
+}
+
+/* ════════════════════════════════════════
+   CLAUDE SLIDE COUNT
+════════════════════════════════════════ */
+function setSlideCount(n, btn) {
+  claudeCount = n;
+  document.querySelectorAll('.ai-box .ratio-btn').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+}
+
+/* ════════════════════════════════════════
+   COPY PROMPT → Claude
+════════════════════════════════════════ */
+function copyPrompt() {
+  const prompt =
+`ช่วยแบ่งเนื้อหาด้านล่างเป็น ${claudeCount} slides สำหรับ carousel TikTok
+
+[วางเนื้อหาของคุณตรงนี้]
+
+ตอบเป็น JSON array เท่านั้น ไม่มี text อื่น ไม่มี backtick:
+[{"tag":"COVER","title":"...","subtitle":"...","b1":"...","b2":"...","b3":"...","b4":"...","b5":"..."}]
+
+กฎ JSON:
+- ใช้ double quotes เสมอ
+- ห้ามมี apostrophe ในค่า
+- ไม่มี trailing comma
+- ไม่มี line break ใน string
+
+กฎความยาว:
+- title: ไม่เกิน 5 คำ
+- subtitle: ไม่เกิน 10 คำ
+- b1-b5: แต่ละข้อไม่เกิน 15 คำ ถ้าไม่มีให้ใส่ ""
+
+โทน: ภาษาพูดจริงๆ เหมือนคุยกับเพื่อน ไม่ใช้คำสวยหรู`;
+
+  copyToClipboard(prompt, 'Copy แล้ว! วางใน Claude ได้เลย ✓');
+}
+
+/* ════════════════════════════════════════
+   IMPORT JSON → SLIDES
+════════════════════════════════════════ */
+function importJSON() {
+  const raw = document.getElementById('jsonImport').value.trim();
+  if (!raw) { showToast('วาง JSON ก่อนนะ', 'error'); return; }
+
+  try {
+    const match = raw.match(/\[[\s\S]*\]/);
+    if (!match) throw new Error('ไม่พบ JSON array');
+
+    let jsonStr = match[0]
+      .replace(/[\u2018\u2019]/g, "'")
+      .replace(/[\u201C\u201D]/g, '"')
+      .replace(/,\s*([}\]])/g, '$1');
+
+    const arr = JSON.parse(jsonStr);
+    if (!Array.isArray(arr) || !arr.length) throw new Error('JSON ว่างเปล่า');
+
+    SLIDES = arr.map(s => ({
+      tag:      String(s.tag      || ''),
+      title:    String(s.title    || ''),
+      subtitle: String(s.subtitle || ''),
+      b1:       String(s.b1       || ''),
+      b2:       String(s.b2       || ''),
+      b3:       String(s.b3       || ''),
+      b4:       String(s.b4       || ''),
+      b5:       String(s.b5       || ''),
+    }));
+
+    currentSlide = 0;
+    saveHistory();
+    renderSlide();
+    buildSlideList();
+    document.getElementById('jsonImport').value = '';
+    showToast('โหลด ' + SLIDES.length + ' สไลด์สำเร็จ!', 'success');
+    switchTab('preview', document.querySelector('.tab-btn'));
+  } catch(e) {
+    console.error(e);
+    showToast('JSON ไม่ถูกต้อง — ลอง copy มาใหม่', 'error');
+  }
+}
+
+/* ════════════════════════════════════════
+   RENDER SLIDE
+════════════════════════════════════════ */
+function renderSlide() {
+  const slide  = SLIDES[currentSlide];
+  const theme  = THEMES[currentTheme];
+  const canvas = document.getElementById('slideCanvas');
+  if (!canvas || !slide) return;
+
+  const fs = fontSize / 100;
+  canvas.style.backgroundColor = theme.bg;
+  canvas.style.color = theme.text;
+  canvas.setAttribute('data-ratio', currentRatio);
+
+  const bulletList = [slide.b1, slide.b2, slide.b3, slide.b4, slide.b5].filter(b => b && b.trim());
+  const totalChars  = bulletList.join('').length + (slide.title||'').length + (slide.subtitle||'').length;
+  const contentScore = totalChars + bulletList.length * 12;
+
+  let autoScale = 1;
+  if      (contentScore > 280) autoScale = 0.62;
+  else if (contentScore > 220) autoScale = 0.70;
+  else if (contentScore > 170) autoScale = 0.78;
+  else if (contentScore > 120) autoScale = 0.86;
+  else if (contentScore > 80)  autoScale = 0.93;
+
+  // ปรับหัวข้อให้ใหญ่โดดเด่นทุกสไลด์ตามรูปตัวอย่าง
+  const isCover = slide.tag && slide.tag.toUpperCase() === 'COVER';
+  
+  // ปรับขนาดพื้นฐานให้ใหญ่ขึ้น (เดิม 20 -> 28, หน้าปก 34 -> 38)
+  const titlePx    = ( (isCover ? 38 : 28) * fs * autoScale).toFixed(1);
+  const subtitlePx = ( (isCover ? 14 : 11) * fs * autoScale).toFixed(1);
+  const bodyPx     = (10.5 * fs * autoScale).toFixed(1); // ปรับเนื้อหาให้ใหญ่ขึ้นเล็กน้อยด้วยเพื่อให้สมดุลกัน
+  const lineH      = contentScore > 170 ? 1.45 : contentScore > 100 ? 1.60 : 1.75;
+  const bulletGap  = contentScore > 170 ? 2 : contentScore > 100 ? 4 : 6;
+
+  const bulletsHTML = bulletList.map(b =>
+    `<div class="slide-bullet" style="margin-bottom:${bulletGap}px;">
+      <div class="bullet-mark" style="background:${theme.bullet};margin-top:${Math.round(parseFloat(bodyPx)*0.45)}px;"></div>
+      <div>${escHtml(b)}</div>
+    </div>`
+  ).join('');
+
+  const watermark = document.getElementById('watermark') ? document.getElementById('watermark').value : '@YUIACHI';
+
+  canvas.innerHTML = `
+    <div class="slide-top">
+      <div class="slide-eyebrow" style="color:${theme.accent};">${escHtml(slide.tag)}</div>
+      <div class="slide-title" style="font-size:${titlePx}px;color:${theme.accent};">${escHtml(slide.title)}</div>
+      ${slide.subtitle ? `<div class="slide-subtitle" style="font-size:${subtitlePx}px;">${escHtml(slide.subtitle)}</div>` : ''}
+      <div class="slide-divider" style="background:${theme.accent};"></div>
+    </div>
+    <div class="slide-mid">
+      <div class="slide-body" style="font-size:${bodyPx}px;line-height:${lineH};">${bulletsHTML}</div>
+    </div>
+    <div class="slide-bot">
+      <div class="slide-footer" style="border-color:${theme.accent}20;">
+        <div>${escHtml(watermark)}</div>
+        <div>${currentSlide + 1} / ${SLIDES.length}</div>
+      </div>
+    </div>`;
+
+  // Sync editor fields
+  ['editTag','editTitle','editSubtitle','editB1','editB2','editB3','editB4','editB5'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const key = id.replace('edit','').toLowerCase();
+    el.value = slide[key] || '';
+  });
+  const numEl = document.getElementById('slideNumLabel');
+  if (numEl) numEl.textContent = currentSlide + 1;
+
+  buildDots();
+  buildSlideList();
+}
+
+function escHtml(s) {
+  return (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+/* ════════════════════════════════════════
+   DOTS
+════════════════════════════════════════ */
+function buildDots() {
+  const dots = document.getElementById('dots');
+  if (!dots) return;
+  dots.innerHTML = '';
+  SLIDES.forEach((_, i) => {
+    const d = document.createElement('div');
+    d.className = 'dot' + (i === currentSlide ? ' active' : '');
+    d.onclick = () => goToSlide(i);
+    dots.appendChild(d);
+  });
+}
+
+/* ════════════════════════════════════════
+   SLIDE LIST (Drag & Drop)
+════════════════════════════════════════ */
+function buildSlideList() {
+  const list = document.getElementById('slideList');
+  if (!list) return;
+  list.innerHTML = '';
+  SLIDES.forEach((slide, i) => {
+    const item = document.createElement('div');
+    item.className = 'slide-list-item' + (i === currentSlide ? ' active' : '');
+    item.draggable = true;
+    item.dataset.index = i;
+    item.innerHTML = `
+      <span class="drag-handle">⠿</span>
+      <div class="slide-list-num">${i + 1}</div>
+      <div class="slide-list-title">${escHtml(slide.title) || '(ว่าง)'}</div>`;
+    item.onclick = e => {
+      if (e.target.classList.contains('drag-handle')) return;
+      goToSlide(i);
+    };
+    item.addEventListener('dragstart', () => {
+      dragSrcIndex = i;
+      setTimeout(() => item.classList.add('dragging'), 0);
+    });
+    item.addEventListener('dragend', () => {
+      item.classList.remove('dragging');
+      document.querySelectorAll('.slide-list-item').forEach(el => el.classList.remove('drag-over'));
+    });
+    item.addEventListener('dragover', e => {
+      e.preventDefault();
+      document.querySelectorAll('.slide-list-item').forEach(el => el.classList.remove('drag-over'));
+      item.classList.add('drag-over');
+    });
+    item.addEventListener('drop', e => {
+      e.preventDefault();
+      const ti = parseInt(item.dataset.index);
+      if (dragSrcIndex !== null && dragSrcIndex !== ti) {
+        const moved = SLIDES.splice(dragSrcIndex, 1)[0];
+        SLIDES.splice(ti, 0, moved);
+        currentSlide = ti;
+        saveHistory();
+        renderSlide();
+        showToast('เรียงลำดับสำเร็จ');
+      }
+      dragSrcIndex = null;
+    });
+    list.appendChild(item);
+  });
+}
+
+/* ════════════════════════════════════════
+   NAVIGATION
+════════════════════════════════════════ */
+function goToSlide(i)    { currentSlide = Math.max(0, Math.min(i, SLIDES.length - 1)); renderSlide(); }
+function nextSlide()     { currentSlide = (currentSlide + 1) % SLIDES.length; renderSlide(); }
+function previousSlide() { currentSlide = (currentSlide - 1 + SLIDES.length) % SLIDES.length; renderSlide(); }
+
+function setRatio(ratio, btn) {
+  currentRatio = ratio;
+  document.querySelectorAll('.ratio-bar .ratio-btn').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  renderSlide();
+}
+
+/* ════════════════════════════════════════
+   EDITOR LIVE UPDATE
+════════════════════════════════════════ */
+function liveUpdate() {
+  const s = SLIDES[currentSlide];
+  if (!s) return;
+  s.tag      = document.getElementById('editTag').value;
+  s.title    = document.getElementById('editTitle').value;
+  s.subtitle = document.getElementById('editSubtitle').value;
+  s.b1       = document.getElementById('editB1').value;
+  s.b2       = document.getElementById('editB2').value;
+  s.b3       = document.getElementById('editB3').value;
+  s.b4       = document.getElementById('editB4').value;
+  s.b5       = document.getElementById('editB5').value;
+  saveHistory();
+  renderSlide();
+}
+
+function updateFontSize() {
+  fontSize = parseInt(document.getElementById('fontSize').value);
+  document.getElementById('fontSizeVal').textContent = fontSize + '%';
+  renderSlide();
+}
+
+/* ════════════════════════════════════════
+   SLIDE MANAGEMENT
+════════════════════════════════════════ */
+function addSlide() {
+  SLIDES.splice(currentSlide + 1, 0, { tag:'NEW', title:'หัวข้อใหม่', subtitle:'', b1:'', b2:'', b3:'', b4:'', b5:'' });
+  currentSlide++;
+  saveHistory();
+  renderSlide();
+  showToast('เพิ่มสไลด์สำเร็จ');
+}
+
+function duplicateSlide() {
+  const copy = JSON.parse(JSON.stringify(SLIDES[currentSlide]));
+  SLIDES.splice(currentSlide + 1, 0, copy);
+  currentSlide++;
+  saveHistory();
+  renderSlide();
+  showToast('คัดลอกสำเร็จ');
+}
+
+function deleteSlide() {
+  if (SLIDES.length <= 1) { showToast('ต้องมีอย่างน้อย 1 สไลด์', 'error'); return; }
+  SLIDES.splice(currentSlide, 1);
+  currentSlide = Math.min(currentSlide, SLIDES.length - 1);
+  saveHistory();
+  renderSlide();
+  showToast('ลบสำเร็จ');
+}
+
+function resetAll() {
+  if (!confirm('รีเซ็ตทั้งหมดใช่ไหม?')) return;
+  SLIDES = [{ tag:'COVER', title:'หัวข้อหลัก', subtitle:'คำอธิบายสั้นๆ', b1:'', b2:'', b3:'', b4:'', b5:'' }];
+  currentSlide = 0; currentTheme = 'ivory'; currentRatio = '4:5'; fontSize = 100;
+  historyStack = [JSON.parse(JSON.stringify(SLIDES))]; historyIndex = 0;
+  document.getElementById('fontSize').value = 100;
+  document.getElementById('fontSizeVal').textContent = '100%';
+  buildThemeGrid();
+  renderSlide();
+  showToast('รีเซ็ตแล้ว', 'info');
+}
+
+/* ════════════════════════════════════════
+   HISTORY
+════════════════════════════════════════ */
+function saveHistory() {
+  historyStack = historyStack.slice(0, historyIndex + 1);
+  historyStack.push(JSON.parse(JSON.stringify(SLIDES)));
+  historyIndex = historyStack.length - 1;
+  updateHistoryButtons();
+}
+
+function undo() {
+  if (historyIndex > 0) {
+    historyIndex--;
+    SLIDES = JSON.parse(JSON.stringify(historyStack[historyIndex]));
+    renderSlide();
+    updateHistoryButtons();
+  }
+}
+
+function redo() {
+  if (historyIndex < historyStack.length - 1) {
+    historyIndex++;
+    SLIDES = JSON.parse(JSON.stringify(historyStack[historyIndex]));
+    renderSlide();
+    updateHistoryButtons();
+  }
+}
+
+function updateHistoryButtons() {
+  const u = document.getElementById('undoBtn');
+  const r = document.getElementById('redoBtn');
+  if (u) u.disabled = historyIndex === 0;
+  if (r) r.disabled = historyIndex === historyStack.length - 1;
+}
+
+/* ════════════════════════════════════════
+   CAPTION PROMPT
+════════════════════════════════════════ */
+function copyCaptionPrompt() {
+  const platform = document.getElementById('captionPlatform').value;
+  const style    = document.getElementById('captionStyle').value;
+  const summary  = SLIDES.map((s, i) =>
+    `[${i+1}] ${s.tag}: ${s.title}${s.subtitle ? ' - ' + s.subtitle : ''}` +
+    [s.b1,s.b2,s.b3,s.b4,s.b5].filter(Boolean).map(b => ' • ' + b).join('')
+  ).join('\n');
+
+  const platformMap = { tiktok:'TikTok (150-200 ตัวอักษร)', instagram:'Instagram (300-500 ตัวอักษร)', both:'TikTok และ Instagram แยกกัน 2 แบบ' };
+  const styleMap    = { casual:'เป็นกันเอง พูดเหมือนเพื่อน', hook:'เริ่มด้วย hook ที่หยุดคนดูทันที' };
+
+  const prompt =
+`เขียน caption สำหรับ ${platformMap[platform]}
+สไตล์: ${styleMap[style]}
+โทน: คุยกับเพื่อน ไม่เป็นทางการ ภาษาพูดจริงๆ
+
+เนื้อหาสไลด์:
+${summary}
+
+ตอบในรูปแบบนี้เท่านั้น:
+CAPTION:
+[caption ตรงนี้]
+
+HASHTAGS:
+[hashtag ตรงนี้]
+
+กฎ:
+- caption ต้องเปิดด้วยประโยคที่หยุดคนเลื่อนได้
+- hashtag: ไทย + อังกฤษ รวม 15-20 tags
+- ไม่ต้องอธิบายเพิ่ม ตอบตามรูปแบบเลย`;
+
+  copyToClipboard(prompt, 'Copy แล้ว! วางใน Claude ได้เลย ✓');
+}
+
+function copyText(elId) {
+  const el = document.getElementById(elId);
+  if (!el) return;
+  const text = el.tagName === 'TEXTAREA' ? el.value : el.textContent;
+  if (!text.trim()) { showToast('ยังไม่มีข้อความ', 'error'); return; }
+  copyToClipboard(text.trim(), 'คัดลอกแล้ว!');
+}
+
+/* ════════════════════════════════════════
+   CLIPBOARD HELPER (GitHub Pages safe)
+════════════════════════════════════════ */
+function copyToClipboard(text, successMsg) {
+  if (navigator.clipboard && window.isSecureContext) {
+    navigator.clipboard.writeText(text)
+      .then(() => showToast(successMsg || 'คัดลอกแล้ว!', 'success'))
+      .catch(() => fallbackCopy(text, successMsg));
+  } else {
+    fallbackCopy(text, successMsg);
+  }
+}
+
+function fallbackCopy(text, successMsg) {
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  ta.style.cssText = 'position:fixed;top:-9999px;left:-9999px;opacity:0;';
+  document.body.appendChild(ta);
+  ta.focus();
+  ta.select();
+  try {
+    document.execCommand('copy');
+    showToast(successMsg || 'คัดลอกแล้ว!', 'success');
+  } catch(e) {
+    showToast('ไม่สามารถคัดลอกได้ กรุณาคัดลอกเอง', 'error');
+  }
+  document.body.removeChild(ta);
+}
+
+/* ════════════════════════════════════════
+   EXPORT
+════════════════════════════════════════ */
+async function exportSlide() {
+  if (typeof html2canvas === 'undefined') { showToast('html2canvas ยังโหลดไม่เสร็จ', 'error'); return; }
+  try {
+    const prefix = (document.getElementById('exportPrefix').value || 'yuiachi').trim();
+    const c = await html2canvas(document.getElementById('slideCanvas'), {
+      scale: 3, backgroundColor: THEMES[currentTheme].bg, useCORS: true, logging: false,
+    });
+    const link = document.createElement('a');
+    link.href = c.toDataURL('image/png');
+    link.download = `${prefix}-slide-${currentSlide + 1}.png`;
+    link.click();
+    showToast('ดาวน์โหลดสำเร็จ!', 'success');
+  } catch(e) {
+    console.error(e);
+    showToast('ดาวน์โหลดไม่สำเร็จ', 'error');
+  }
+}
+
+async function exportAllSlides() {
+  if (typeof html2canvas === 'undefined' || typeof JSZip === 'undefined') {
+    showToast('ไลบรารียังโหลดไม่เสร็จ', 'error'); return;
+  }
+  const progressBar = document.getElementById('zipProgress');
+  const fill        = document.getElementById('zipFill');
+  progressBar.classList.add('show');
+  fill.style.width = '0%';
+
+  const prefix     = (document.getElementById('exportPrefix').value || 'yuiachi').trim();
+  const zip        = new JSZip();
+  const savedSlide = currentSlide;
+  const slideCanvas = document.getElementById('slideCanvas');
+
+  try {
+    for (let i = 0; i < SLIDES.length; i++) {
+      currentSlide = i;
+      renderSlide();
+      await new Promise(r => setTimeout(r, 180));
+      const c = await html2canvas(slideCanvas, {
+        scale: 3, backgroundColor: THEMES[currentTheme].bg, useCORS: true, logging: false,
+      });
+      const blob = await new Promise(r => c.toBlob(r, 'image/png'));
+      zip.file(`${prefix}-slide-${String(i + 1).padStart(2, '0')}.png`, blob);
+      fill.style.width = ((i + 1) / SLIDES.length * 100) + '%';
+    }
+    const zipBlob = await zip.generateAsync({ type: 'blob' });
+    const url = URL.createObjectURL(zipBlob);
+    const link = document.createElement('a');
+    link.href = url; link.download = `${prefix}-slides.zip`; link.click();
+    URL.revokeObjectURL(url);
+    showToast('Export ' + SLIDES.length + ' สไลด์สำเร็จ!', 'success');
+  } catch(e) {
+    console.error(e);
+    showToast('Export ไม่สำเร็จ', 'error');
+  } finally {
+    currentSlide = savedSlide;
+    renderSlide();
+    setTimeout(() => progressBar.classList.remove('show'), 800);
+  }
+}
+
+/* ════════════════════════════════════════
+   THEMES
+════════════════════════════════════════ */
+function buildThemeGrid() {
+  const grid = document.getElementById('themeGrid');
+  if (!grid) return;
+  grid.innerHTML = '';
+  Object.entries(THEMES).forEach(([key, theme]) => {
+    const btn = document.createElement('button');
+    btn.className = 'theme-btn' + (key === currentTheme ? ' active' : '');
+    btn.style.backgroundColor = theme.bg;
+    btn.style.color = theme.text;
+    btn.innerHTML = `${theme.label}<div class="theme-name">${key}</div>`;
+    btn.onclick = () => selectTheme(key, btn);
+    grid.appendChild(btn);
+  });
+}
+
+function selectTheme(name, btn) {
+  currentTheme = name;
+  document.querySelectorAll('.theme-btn').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  renderSlide();
+}
+
+/* ════════════════════════════════════════
+   TABS
+════════════════════════════════════════ */
+function switchTab(tab, btn) {
+  document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+  const el = document.getElementById(tab);
+  if (el) el.classList.add('active');
+  if (btn) btn.classList.add('active');
+}
+
+/* ════════════════════════════════════════
+   SAVE / LOAD (localStorage)
+════════════════════════════════════════ */
+function openSaveModal() {
+  document.getElementById('projectName').value = '';
+  document.getElementById('saveModal').classList.add('show');
+  setTimeout(() => document.getElementById('projectName').focus(), 100);
+}
+
+function saveProject() {
+  const name = document.getElementById('projectName').value.trim();
+  if (!name) { showToast('ใส่ชื่อโปรเจกต์ก่อน', 'error'); return; }
+  try {
+    const projects = JSON.parse(localStorage.getItem('yuiachiProjects') || '{}');
+    projects[name] = {
+      slides: SLIDES, theme: currentTheme,
+      fontSize, ratio: currentRatio,
+      date: new Date().toLocaleString('th-TH'),
+    };
+    localStorage.setItem('yuiachiProjects', JSON.stringify(projects));
+    closeModal('saveModal');
+    showToast('บันทึกสำเร็จ!', 'success');
+  } catch(e) {
+    showToast('บันทึกไม่สำเร็จ (storage เต็ม?)', 'error');
+  }
+}
+
+function openLoadModal() {
+  let projects = {};
+  try { projects = JSON.parse(localStorage.getItem('yuiachiProjects') || '{}'); } catch(e) {}
+  const list = document.getElementById('projectList');
+  list.innerHTML = '';
+
+  const keys = Object.keys(projects);
+  if (!keys.length) {
+    list.innerHTML = '<p style="color:var(--muted);font-size:11px;text-align:center;padding:10px;">ยังไม่มีโปรเจกต์บันทึกไว้</p>';
+  } else {
+    keys.sort((a, b) => (projects[b].date || '').localeCompare(projects[a].date || '')).forEach(name => {
+      const data = projects[name];
+      const item = document.createElement('div');
+      item.style.cssText = 'padding:8px;background:var(--surface2);border-radius:6px;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center;gap:6px;';
+      item.innerHTML = `
+        <div style="flex:1;min-width:0;">
+          <div style="font-weight:600;font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escHtml(name)}</div>
+          <div style="font-size:9px;color:var(--muted);">${data.date || ''} · ${(data.slides||[]).length} สไลด์</div>
+        </div>
+        <div style="display:flex;gap:4px;flex-shrink:0;">
+          <button class="icon-btn" style="width:auto;padding:5px 8px;font-size:10px;" onclick="loadProject(${JSON.stringify(name)})">โหลด</button>
+          <button class="icon-btn" style="width:auto;padding:5px 8px;font-size:10px;color:var(--danger);" onclick="deleteProject(${JSON.stringify(name)})">ลบ</button>
+        </div>`;
+      list.appendChild(item);
+    });
+  }
+  document.getElementById('loadModal').classList.add('show');
+}
+
+function loadProject(name) {
+  let projects = {};
+  try { projects = JSON.parse(localStorage.getItem('yuiachiProjects') || '{}'); } catch(e) {}
+  if (!projects[name]) return;
+  const p = projects[name];
+  SLIDES = (p.slides || []).map(s => ({
+    tag: s.tag||'', title: s.title||'', subtitle: s.subtitle||'',
+    b1: s.b1||'', b2: s.b2||'', b3: s.b3||'', b4: s.b4||'', b5: s.b5||'',
+  }));
+  currentTheme = p.theme || 'ivory';
+  fontSize     = p.fontSize || 100;
+  currentRatio = p.ratio || '4:5';
+  currentSlide = 0;
+  historyStack = [JSON.parse(JSON.stringify(SLIDES))];
+  historyIndex = 0;
+  document.getElementById('fontSize').value = fontSize;
+  document.getElementById('fontSizeVal').textContent = fontSize + '%';
+  document.querySelectorAll('.ratio-bar .ratio-btn').forEach(b => {
+    b.classList.toggle('active', b.textContent.trim() === currentRatio);
+  });
+  buildThemeGrid();
+  renderSlide();
+  closeModal('loadModal');
+  showToast('โหลดสำเร็จ!', 'success');
+}
+
+function deleteProject(name) {
+  if (!confirm('ลบ "' + name + '" ใช่ไหม?')) return;
+  let projects = {};
+  try { projects = JSON.parse(localStorage.getItem('yuiachiProjects') || '{}'); } catch(e) {}
+  delete projects[name];
+  localStorage.setItem('yuiachiProjects', JSON.stringify(projects));
+  openLoadModal();
+  showToast('ลบสำเร็จ');
+}
+
+function closeModal(id) {
+  const el = document.getElementById(id);
+  if (el) el.classList.remove('show');
+}
+
+/* ════════════════════════════════════════
+   TOAST
+════════════════════════════════════════ */
+let _toastTimer;
+function showToast(msg, type) {
+  clearTimeout(_toastTimer);
+  document.querySelectorAll('.toast').forEach(t => t.remove());
+  const t = document.createElement('div');
+  t.className = 'toast' + (type ? ' ' + type : '');
+  t.textContent = msg;
+  document.body.appendChild(t);
+  _toastTimer = setTimeout(() => t.remove(), 2500);
+}
+
+/* ════════════════════════════════════════
+   PWA — GitHub Pages compatible
+   (ไม่ใช้ URL.createObjectURL สำหรับ SW
+    เพราะ GitHub Pages บล็อก blob: SW)
+════════════════════════════════════════ */
+function setupInstallPrompt() {
+  window.addEventListener('beforeinstallprompt', e => {
+    e.preventDefault();
+    deferredPrompt = e;
+    const prompt = document.getElementById('installPrompt');
+    if (prompt) prompt.style.display = 'flex';
+  });
+  window.addEventListener('appinstalled', () => {
+    deferredPrompt = null;
+    const prompt = document.getElementById('installPrompt');
+    if (prompt) prompt.style.display = 'none';
+  });
+}
+
+function installApp() {
+  if (deferredPrompt) {
+    deferredPrompt.prompt();
+    deferredPrompt.userChoice.then(() => {
+      deferredPrompt = null;
+      const prompt = document.getElementById('installPrompt');
+      if (prompt) prompt.style.display = 'none';
+    });
+  }
+}
+
+/* ════════════════════════════════════════
+   KEYBOARD SHORTCUTS
+════════════════════════════════════════ */
+document.addEventListener('keydown', e => {
+  const tag = document.activeElement ? document.activeElement.tagName : '';
+  const isInput = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
+
+  if (e.ctrlKey || e.metaKey) {
+    if (e.key === 'z') { e.preventDefault(); undo(); }
+    if (e.key === 'y') { e.preventDefault(); redo(); }
+    if (e.key === 's') { e.preventDefault(); openSaveModal(); }
+  }
+  if (!isInput) {
+    if (e.key === 'ArrowRight') { e.preventDefault(); nextSlide(); }
+    if (e.key === 'ArrowLeft')  { e.preventDefault(); previousSlide(); }
+  }
+});
+
+/* ════════════════════════════════════════
+   START
+════════════════════════════════════════ */
+init();
+</script>
+</body>
+</html>
